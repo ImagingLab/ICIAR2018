@@ -5,26 +5,24 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 
-from .network import BachNetwork
 from .options import ModelOptions
-from .bach_dataset import BachDataset
+from .bach_dataset import BachDataset, LABELS
 
 
 class BachModel:
-    def __init__(self):
-        model = BachNetwork()
+    def __init__(self, model):
         args = ModelOptions().parse()
-        weights = args.checkpoints_dir + '/weights.pth'
-        os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu_ids
+        weights = args.checkpoints_dir + '/weights_' + model.name() + '.pth'
 
         torch.manual_seed(args.seed)
         if args.cuda:
             torch.cuda.manual_seed(args.seed)
 
-            if os.path.exists(weights):
-                model = torch.load(weights).cuda()
+        if os.path.exists(weights):
+            model = torch.load(weights).cuda()
 
         self.args = args
+        self.weights = weights
         self.model = model.cuda() if args.cuda else model
 
     def train(self):
@@ -59,7 +57,7 @@ class BachModel:
                 correct += torch.sum(predicted == labels)
                 total += len(images)
 
-                if index > 0 and index % 20 == 0:
+                if index > 0 and index % self.args.log_interval == 0:
                     print('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}, Accuracy: {:.2f}%'.format(
                         epoch,
                         index * len(images),
@@ -71,13 +69,22 @@ class BachModel:
 
             print('End of epoch {}, saving model....\n'.format(epoch))
             self.test()
-            torch.save(self.model, self.args.checkpoints_dir + '/weights.pth')
+            torch.save(self.model, self.weights)
 
     def test(self):
         self.model.eval()
 
         test_loss = 0
         correct = 0
+        classes = len(LABELS)
+
+        tp = [0] * classes
+        tpfp = [0] * classes
+        tpfn = [0] * classes
+        precision = [0] * classes
+        recall = [0] * classes
+        f1 = [0] * classes
+
         test_loader = DataLoader(
             dataset=BachDataset(path=self.args.dataset_path + '/test', stride=self.args.patch_stride, augment=False),
             batch_size=self.args.batch_size,
@@ -89,13 +96,38 @@ class BachModel:
             if self.args.cuda:
                 images, labels = images.cuda(), labels.cuda()
 
-            images, labels = Variable(images, volatile=True), Variable(labels)
+            output = self.model(Variable(images, volatile=True))
 
-            output = self.model(images)
+            test_loss += F.nll_loss(output, Variable(labels), size_average=False).data[0]
+            _, predicted = torch.max(output.data, 1)
+            correct += torch.sum(predicted == labels)
 
-            test_loss += F.nll_loss(output, labels, size_average=False).data[0]  # sum up batch loss
-            pred = output.data.max(1, keepdim=True)[1]  # get the index of the max log-probability
-            correct += pred.eq(labels.data.view_as(pred)).cpu().sum()
+            for label in range(classes):
+                t_labels = labels == label
+                p_labels = predicted == label
+                tp[label] += torch.sum(t_labels == (p_labels * 2 - 1))
+                tpfp[label] += torch.sum(p_labels)
+                tpfn[label] += torch.sum(t_labels)
+
+        for label in range(classes):
+            precision[label] += (tp[label] / (tpfp[label] + 1e-8))
+            recall[label] += (tp[label] / (tpfn[label] + 1e-8))
+            f1[label] = 2 * precision[label] * recall[label] / (precision[label] + recall[label])
 
         test_loss /= len(test_loader.dataset)
-        print('\nAverage loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(test_loss, correct, len(test_loader.dataset), 100. * correct / len(test_loader.dataset)))
+        print('\nAverage loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
+            test_loss,
+            correct,
+            len(test_loader.dataset),
+            100. * correct / len(test_loader.dataset)
+        ))
+
+        for label in range(classes):
+            print('{}:  \t Precision: {:.2f},  Recall: {:.2f},  F1: {:.2f}'.format(
+                LABELS[label],
+                precision[label],
+                recall[label],
+                f1[label]
+            ))
+
+        print('')

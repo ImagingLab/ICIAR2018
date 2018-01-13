@@ -1,20 +1,16 @@
-from src import BachModel
+from src import ModelOptions, BachModel, BachNetwork, BachNetwork2, AlexNet
 
-model = BachModel()
+opt = ModelOptions().parse()
+
+if opt.network == 'AlexNet':
+    network = AlexNet()
+
+elif opt.network == 'BachNetwork2':
+    network = BachNetwork2()
+
+else:
+    network = BachNetwork()
+
+model = BachModel(network)
 model.train()
-
-# import torch
-# from torchvision import datasets, transforms
-#
-# train_loader = torch.utils.data.DataLoader(
-#     datasets.MNIST('../data', train=True, download=True,
-#                    transform=transforms.Compose([
-#                        transforms.ToTensor(),
-#                        transforms.Normalize((0.1307,), (0.3081,))
-#                    ])),
-#     batch_size=64, shuffle=True)
-#
-#
-# for batch_idx, (data, target) in enumerate(train_loader):
-#     print(target[10])
-#     break
+#model.test()
