@@ -11,7 +11,7 @@ IMAGE_SIZE = (2048, 1536)
 PATCH_SIZE = 512
 
 
-class PatchDataset(Dataset):
+class PatchWiseDataset(Dataset):
     def __init__(self, path, stride=PATCH_SIZE, rotate=False, flip=False):
         super().__init__()
 
@@ -46,7 +46,7 @@ class PatchDataset(Dataset):
         return np.prod(self.shape)
 
 
-class WholeDataset(Dataset):
+class ImageWiseDataset(Dataset):
     def __init__(self, path, stride=PATCH_SIZE, rotate=False, flip=False):
         super().__init__()
 
@@ -81,3 +81,4 @@ class WholeDataset(Dataset):
 
     def __len__(self):
         return np.prod(self.shape)
+

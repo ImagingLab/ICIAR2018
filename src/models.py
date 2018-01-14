@@ -1,46 +1,50 @@
 import time
 import datetime
+import torch
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.autograd import Variable
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, TensorDataset
 
 from .options import *
 from .datasets import *
 
+TRAIN_PATH = '/train'
+TEST_PATH = '/test'
 
-class PatchModel:
-    def __init__(self, model):
+
+class PatchWiseModel:
+    def __init__(self, network):
         args = ModelOptions().parse()
-        weights = args.checkpoints_dir + '/weights_patch_' + model.name() + '.pth'
+        weights = args.checkpoints_dir + '/weights_patch_' + network.name() + '.pth'
 
         torch.manual_seed(args.seed)
         if args.cuda:
             torch.cuda.manual_seed(args.seed)
 
         if os.path.exists(weights):
-            print('loading model...\n')
-            model = torch.load(weights).cuda()
+            print('\nloading model...')
+            network = torch.load(weights).cuda()
 
         self.args = args
         self.weights = weights
-        self.model = model.cuda() if args.cuda else model
+        self.network = network.cuda() if args.cuda else network
 
-    def train(self):
-        self.model.train()
+    def start_train(self):
+        self.network.train()
         print('Start training: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
 
         train_loader = DataLoader(
-            dataset=PatchDataset(path=self.args.dataset_path + '/train', stride=self.args.patch_stride, rotate=True, flip=True),
+            dataset=PatchWiseDataset(path=self.args.dataset_path + TRAIN_PATH, stride=self.args.patch_stride, rotate=True, flip=True),
             batch_size=self.args.batch_size,
             shuffle=True,
-            num_workers=8
+            num_workers=4
         )
-        optimizer = optim.Adam(self.model.parameters(), lr=self.args.lr, betas=(self.args.beta1, self.args.beta2))
+        optimizer = optim.Adam(self.network.parameters(), lr=self.args.lr, betas=(self.args.beta1, self.args.beta2))
 
         for epoch in range(1, self.args.epochs + 1):
 
-            self.model.train()
+            self.network.train()
             stime = datetime.datetime.now()
 
             # adjust learning rate
@@ -57,7 +61,7 @@ class PatchModel:
                     images, labels = images.cuda(), labels.cuda()
 
                 optimizer.zero_grad()
-                output = self.model(Variable(images))
+                output = self.network(Variable(images))
                 loss = F.nll_loss(output, Variable(labels))
                 loss.backward()
                 optimizer.step()
@@ -77,12 +81,12 @@ class PatchModel:
                     ))
 
             print('\nEnd of epoch {}, time: {}, saving model....'.format(epoch, datetime.datetime.now() - stime))
-            torch.save(self.model, self.weights)
+            torch.save(self.network, self.weights)
 
-            self.test()
+            self.start_test()
 
-    def test(self):
-        self.model.eval()
+    def start_test(self):
+        self.network.eval()
 
         test_loss = 0
         correct = 0
@@ -96,10 +100,10 @@ class PatchModel:
         f1 = [0] * classes
 
         test_loader = DataLoader(
-            dataset=PatchDataset(path=self.args.dataset_path + '/test', stride=self.args.patch_stride),
+            dataset=PatchWiseDataset(path=self.args.dataset_path + TEST_PATH, stride=self.args.patch_stride),
             batch_size=self.args.batch_size,
             shuffle=False,
-            num_workers=8
+            num_workers=4
         )
         print('Evaluating....')
         for images, labels in test_loader:
@@ -107,7 +111,7 @@ class PatchModel:
             if self.args.cuda:
                 images, labels = images.cuda(), labels.cuda()
 
-            output = self.model(Variable(images, volatile=True))
+            output = self.network(Variable(images, volatile=True))
 
             test_loss += F.nll_loss(output, Variable(labels), size_average=False).data[0]
             _, predicted = torch.max(output.data, 1)
@@ -143,38 +147,76 @@ class PatchModel:
 
         print('')
 
+    def output_train(self):
+        return self._output(True)
 
-class WholeModel:
-    def __init__(self, model):
+    def output_test(self):
+        return self._output(False)
+
+    def _output(self, is_train):
+        self.network.eval()
+
+        dataset = ImageWiseDataset(
+            path=self.args.dataset_path + (TRAIN_PATH if is_train else TEST_PATH),
+            stride=self.args.patch_stride,
+            flip=(True if is_train else False))
+
+        output_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False, num_workers=8)
+        output_images = []
+        output_labels = []
+
+        index = 0
+        for images, labels in output_loader:
+            index += 1
+            print(index)
+            if self.args.cuda:
+                images, labels = images.cuda(), labels.cuda()
+                res = self.features(Variable(images, volatile=True))
+                output_images.append(res)
+                output_labels.append(labels)
+
+        return np.array(output_images), np.array(output_labels)
+
+
+class ImageWiseModel:
+    def __init__(self, network, patch_network):
         args = ModelOptions().parse()
-        weights = args.checkpoints_dir + '/weights_whole_' + model.name() + '.pth'
+        weights = args.checkpoints_dir + '/weights_whole_' + network.name() + '.pth'
 
         torch.manual_seed(args.seed)
         if args.cuda:
             torch.cuda.manual_seed(args.seed)
 
         if os.path.exists(weights):
-            print('loading model...\n')
-            model = torch.load(weights).cuda()
+            print('\nloading model...')
+            network = torch.load(weights).cuda()
 
         self.args = args
         self.weights = weights
-        self.model = model.cuda() if args.cuda else model
+        self.patch_model = PatchWiseModel(patch_network)
+        self.network = network.cuda() if args.cuda else network
 
-    def train(self):
-        self.model.train()
-        print('Start training...\n')
+    def start_train(self):
+        self.network.train()
+        print('Evaluating patch-wise model...')
 
+        patch_outputs = self.patch_model.output_train()
         train_loader = DataLoader(
-            dataset=WholeDataset(path=self.args.dataset_path + '/train', stride=self.args.patch_stride, rotate=True, flip=True),
+            dataset=TensorDataset(torch.from_numpy(patch_outputs[0]), torch.from_numpy(patch_outputs[1])),
             batch_size=self.args.batch_size,
             shuffle=True,
-            num_workers=8
+            num_workers=2
         )
-        optimizer = optim.Adam(self.model.parameters(), lr=self.args.lr, betas=(self.args.beta1, self.args.beta2))
+
+        print('Start training: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
+
+        optimizer = optim.Adam(self.network.parameters(), lr=self.args.lr, betas=(self.args.beta1, self.args.beta2))
 
         for epoch in range(1, self.args.epochs + 1):
-            self.model.train()
+
+            self.network.train()
+            stime = datetime.datetime.now()
+
             correct = 0
             total = 0
 
@@ -184,7 +226,7 @@ class WholeModel:
                     images, labels = images.cuda(), labels.cuda()
 
                 optimizer.zero_grad()
-                output = self.model(Variable(images))
+                output = self.network(Variable(images))
                 loss = F.nll_loss(output, Variable(labels))
                 loss.backward()
                 optimizer.step()
@@ -203,14 +245,22 @@ class WholeModel:
                         100 * correct / total
                     ))
 
-            print('End of epoch {}, saving model....\n'.format(epoch))
-            torch.save(self.model, self.weights)
+            print('\nEnd of epoch {}, time: {}, saving model....'.format(epoch, datetime.datetime.now() - stime))
+            torch.save(self.network, self.weights)
 
-            print('Evaluating....\n'.format(epoch))
-            self.test()
+            self.start_test()
 
-    def test(self):
-        self.model.eval()
+    def start_test(self):
+        self.network.eval()
+
+        if self._test_loader is None:
+            patch_outputs = self.patch_model.output_test()
+            self._test_loader = DataLoader(
+                dataset=TensorDataset(torch.from_numpy(patch_outputs[0]), torch.from_numpy(patch_outputs[1])),
+                batch_size=self.args.batch_size,
+                shuffle=True,
+                num_workers=2
+            )
 
         test_loss = 0
         correct = 0
@@ -223,19 +273,13 @@ class WholeModel:
         recall = [0] * classes
         f1 = [0] * classes
 
-        test_loader = DataLoader(
-            dataset=WholeDataset(path=self.args.dataset_path + '/train', stride=self.args.patch_stride),
-            batch_size=self.args.batch_size,
-            shuffle=False,
-            num_workers=8
-        )
-
-        for images, labels in test_loader:
+        print('Evaluating....')
+        for images, labels in self._test_loader:
 
             if self.args.cuda:
                 images, labels = images.cuda(), labels.cuda()
 
-            output = self.model(Variable(images, volatile=True))
+            output = self.network(Variable(images, volatile=True))
 
             test_loss += F.nll_loss(output, Variable(labels), size_average=False).data[0]
             _, predicted = torch.max(output.data, 1)
@@ -253,12 +297,12 @@ class WholeModel:
             recall[label] += (tp[label] / (tpfn[label] + 1e-8))
             f1[label] = 2 * precision[label] * recall[label] / (precision[label] + recall[label] + 1e-8)
 
-        test_loss /= len(test_loader.dataset)
+        test_loss /= len(self._test_loader.dataset)
         print('\nAverage loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
             test_loss,
             correct,
-            len(test_loader.dataset),
-            100. * correct / len(test_loader.dataset)
+            len(self._test_loader.dataset),
+            100. * correct / len(self._test_loader.dataset)
         ))
 
         for label in range(classes):
