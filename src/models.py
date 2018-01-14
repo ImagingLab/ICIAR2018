@@ -6,10 +6,10 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader
 
 from .options import ModelOptions
-from .bach_dataset import PatchDataset, LABELS
+from .datasets import PatchDataset, LABELS
 
 
-class BachModel:
+class PatchModel:
     def __init__(self, model):
         args = ModelOptions().parse()
         weights = args.checkpoints_dir + '/weights_' + model.name() + '.pth'
