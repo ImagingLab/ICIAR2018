@@ -1,4 +1,5 @@
 import glob
+import torch
 import numpy as np
 from PIL import Image
 from torch.utils.data import Dataset
@@ -10,9 +11,9 @@ IMAGE_SIZE = (2048, 1536)
 PATCH_SIZE = 512
 
 
-class BachDataset(Dataset):
-    def __init__(self, path, stride=PATCH_SIZE, augment=False):
-        super(Dataset, self).__init__()
+class PatchDataset(Dataset):
+    def __init__(self, path, stride=PATCH_SIZE, rotate=False, flip=False):
+        super().__init__()
 
         wp = int((IMAGE_SIZE[0] - PATCH_SIZE) / stride + 1)
         hp = int((IMAGE_SIZE[1] - PATCH_SIZE) / stride + 1)
@@ -22,22 +23,61 @@ class BachDataset(Dataset):
         self.stride = stride
         self.labels = labels
         self.names = list(sorted(labels.keys()))
-        self.shape = (len(labels), wp, hp, (4 if augment else 1), (2 if augment else 1))  # (files, x_patches, y_patches, rotations, flip)
+        self.shape = (len(labels), wp, hp, (4 if rotate else 1), (2 if flip else 1))  # (files, x_patches, y_patches, rotations, flip)
 
     def __getitem__(self, index):
-        img, xpatch, ypatch, rotation, flip = np.unravel_index(index, self.shape)
-        extractor = PatchExtractor(path=self.names[img], patch_size=PATCH_SIZE, stride=self.stride)
-        patch = extractor.extract_patch((xpatch, ypatch))
+        im, xpatch, ypatch, rotation, flip = np.unravel_index(index, self.shape)
 
-        if rotation != 0:
-            patch = patch.rotate(rotation * 90)
+        with Image.open(self.names[im]) as img:
+            extractor = PatchExtractor(img=img, patch_size=PATCH_SIZE, stride=self.stride)
+            patch = extractor.extract_patch((xpatch, ypatch))
 
-        if flip != 0:
-            patch = patch.transpose(Image.FLIP_LEFT_RIGHT)
+            if rotation != 0:
+                patch = patch.rotate(rotation * 90)
 
-        label = self.labels[self.names[img]]
+            if flip != 0:
+                patch = patch.transpose(Image.FLIP_LEFT_RIGHT)
 
-        return transforms.ToTensor()(patch), label
+            label = self.labels[self.names[im]]
+
+            return transforms.ToTensor()(patch), label
+
+    def __len__(self):
+        return np.prod(self.shape)
+
+
+class WholeDataset(Dataset):
+    def __init__(self, path, stride=PATCH_SIZE, rotate=False, flip=False):
+        super().__init__()
+
+        labels = {name: index for index in range(len(LABELS)) for name in glob.glob(path + '/' + LABELS[index] + '/*.tif')}
+
+        self.path = path
+        self.stride = stride
+        self.labels = labels
+        self.names = list(sorted(labels.keys()))
+        self.shape = (len(labels), (4 if rotate else 1), (2 if flip else 1))  # (files, x_patches, y_patches, rotations, flip)
+
+    def __getitem__(self, index):
+        im, rotation, flip = np.unravel_index(index, self.shape)
+
+        with Image.open(self.names[im]) as img:
+
+            if rotation != 0:
+                img = img.rotate(rotation * 90)
+
+            if flip != 0:
+                img = img.transpose(Image.FLIP_LEFT_RIGHT)
+
+            extractor = PatchExtractor(img=img, patch_size=PATCH_SIZE, stride=self.stride)
+            patches = extractor.extract_patches()
+
+            label = self.labels[self.names[im]]
+
+            b = torch.zeros((len(patches), 3, PATCH_SIZE, PATCH_SIZE))
+            for i in range(len(patches)):
+                b[i] = transforms.ToTensor()(patches[i])
+            return b, label
 
     def __len__(self):
         return np.prod(self.shape)

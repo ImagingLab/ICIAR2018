@@ -6,7 +6,7 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader
 
 from .options import ModelOptions
-from .bach_dataset import BachDataset, LABELS
+from .bach_dataset import PatchDataset, LABELS
 
 
 class BachModel:
@@ -19,6 +19,7 @@ class BachModel:
             torch.cuda.manual_seed(args.seed)
 
         if os.path.exists(weights):
+            print('loading model...\n')
             model = torch.load(weights).cuda()
 
         self.args = args
@@ -30,7 +31,7 @@ class BachModel:
         print('Start training...\n')
 
         train_loader = DataLoader(
-            dataset=BachDataset(path=self.args.dataset_path + '/train', stride=self.args.patch_stride, augment=True),
+            dataset=PatchDataset(path=self.args.dataset_path + '/train', stride=self.args.patch_stride, rotate=True, flip=True),
             batch_size=self.args.batch_size,
             shuffle=True,
             num_workers=8
@@ -86,9 +87,10 @@ class BachModel:
         f1 = [0] * classes
 
         test_loader = DataLoader(
-            dataset=BachDataset(path=self.args.dataset_path + '/test', stride=self.args.patch_stride, augment=False),
+            dataset=PatchDataset(path=self.args.dataset_path + '/train', stride=self.args.patch_stride),
             batch_size=self.args.batch_size,
-            shuffle=False
+            shuffle=False,
+            num_workers=8
         )
 
         for images, labels in test_loader:
@@ -112,7 +114,7 @@ class BachModel:
         for label in range(classes):
             precision[label] += (tp[label] / (tpfp[label] + 1e-8))
             recall[label] += (tp[label] / (tpfn[label] + 1e-8))
-            f1[label] = 2 * precision[label] * recall[label] / (precision[label] + recall[label])
+            f1[label] = 2 * precision[label] * recall[label] / (precision[label] + recall[label] + 1e-8)
 
         test_loss /= len(test_loader.dataset)
         print('\nAverage loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
@@ -131,3 +133,4 @@ class BachModel:
             ))
 
         print('')
+

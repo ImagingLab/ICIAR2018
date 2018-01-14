@@ -1,14 +1,11 @@
-from PIL import Image
-
-
 class PatchExtractor:
-    def __init__(self, path, patch_size, stride):
+    def __init__(self, img, patch_size, stride):
         '''
-        :param path: path to the image file
+        :param img: :py:class:`~PIL.Image.Image`
         :param patch_size: integer, size of the patch
         :param stride: integer, size of the stride
         '''
-        self.path = path
+        self.img = img
         self.size = patch_size
         self.stride = stride
 
@@ -17,10 +14,9 @@ class PatchExtractor:
         extracts all patches from an image
         :returns: A list of :py:class:`~PIL.Image.Image` objects.
         """
-        with Image.open(self.path) as img:
-            wp = int((img.width - self.size) / self.stride + 1)
-            hp = int((img.height - self.size) / self.stride + 1)
-            return [self._extract_patch(img, (w, h)) for h in range(hp) for w in range(wp)]
+        wp = int((self.img.width - self.size) / self.stride + 1)
+        hp = int((self.img.height - self.size) / self.stride + 1)
+        return [self.extract_patch((w, h)) for h in range(hp) for w in range(wp)]
 
     def extract_patch(self, patch):
         """
@@ -29,13 +25,11 @@ class PatchExtractor:
         :rtype: :py:class:`~PIL.Image.Image`
         :returns: An :py:class:`~PIL.Image.Image` object.
         """
-        with Image.open(self.path) as img:
-            return self._extract_patch(img, patch)
-
-    def _extract_patch(self, img, patch):
-        return img.crop((
+        return self.img.crop((
             patch[0] * self.stride,  # left
             patch[1] * self.stride,  # up
             patch[0] * self.stride + self.size,  # right
             patch[1] * self.stride + self.size  # down
         ))
+
+
