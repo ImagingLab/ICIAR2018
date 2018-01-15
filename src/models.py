@@ -17,7 +17,7 @@ class PatchWiseModel:
         weights = args.checkpoints_dir + '/weights_' + network.name() + '.pth'
 
         if os.path.exists(weights):
-            print('loading patch-wise model...')
+            print('Loading "patch-wise" model...')
             network = torch.load(weights).cuda()
 
         self.args = args
@@ -179,7 +179,7 @@ class ImageWiseModel:
         weights = args.checkpoints_dir + '/weights_' + image_wise_network.name() + '.pth'
 
         if os.path.exists(weights):
-            print('\nloading image-wise model...')
+            print('\nLoading "image-wise" model...')
             image_wise_network = torch.load(weights).cuda()
 
         self.args = args
