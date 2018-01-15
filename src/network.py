@@ -325,3 +325,115 @@ class PatchWiseNetwork5(nn.Module):
             elif isinstance(m, nn.Linear):
                 m.weight.data.normal_(0, 0.01)
                 m.bias.data.zero_()
+
+
+class ImageWiseNetwork4(nn.Module):
+    def __init__(self):
+        super(ImageWiseNetwork4, self).__init__()
+
+        self.features = nn.Sequential(
+            nn.Conv2d(in_channels=35, out_channels=64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=2, stride=2),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=2, stride=2),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+
+            nn.Conv2d(in_channels=64, out_channels=1, kernel_size=1, stride=1),
+        )
+
+        self.classifier = nn.Sequential(
+            nn.Linear(1 * 16 * 16, 4),
+        )
+
+        self._initialize_weights()
+
+    def name(self):
+        return 'iw4'
+
+    def forward(self, x):
+        x = self.features(x)
+        x = x.view(x.size(0), -1)
+        x = self.classifier(x)
+        x = F.log_softmax(x, dim=1)
+        return x
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.xavier_uniform(m.weight, gain=np.sqrt(2))
+                if m.bias is not None:
+                    m.bias.data.zero_()
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+            elif isinstance(m, nn.Linear):
+                m.weight.data.normal_(0, 0.01)
+                m.bias.data.zero_()
+
+
+class ImageWiseNetwork5(nn.Module):
+    def __init__(self):
+        super(ImageWiseNetwork5, self).__init__()
+
+        self.features = nn.Sequential(
+            nn.Conv2d(in_channels=35, out_channels=64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.2, inplace=True),
+
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=2, stride=2),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.2, inplace=True),
+
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.2, inplace=True),
+
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=2, stride=2),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.2, inplace=True),
+
+            nn.Conv2d(in_channels=64, out_channels=1, kernel_size=1, stride=1),
+        )
+
+        self.classifier = nn.Sequential(
+            nn.Linear(1 * 16 * 16, 4),
+        )
+
+        self._initialize_weights()
+
+    def name(self):
+        return 'iw5'
+
+    def forward(self, x):
+        x = self.features(x)
+        x = x.view(x.size(0), -1)
+        x = self.classifier(x)
+        x = F.log_softmax(x, dim=1)
+        return x
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.xavier_uniform(m.weight, gain=np.sqrt(2))
+                if m.bias is not None:
+                    m.bias.data.zero_()
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+            elif isinstance(m, nn.Linear):
+                m.weight.data.normal_(0, 0.01)
+                m.bias.data.zero_()

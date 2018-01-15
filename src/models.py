@@ -179,9 +179,9 @@ class PatchWiseModel:
 
 
 class ImageWiseModel:
-    def __init__(self, network, patch_network):
+    def __init__(self, image_wise_network, patch_wise_network):
         args = ModelOptions().parse()
-        weights = args.checkpoints_dir + '/weights_' + network.name() + '.pth'
+        weights = args.checkpoints_dir + '/weights_' + image_wise_network.name() + '.pth'
 
         torch.manual_seed(args.seed)
         if args.cuda:
@@ -189,18 +189,18 @@ class ImageWiseModel:
 
         if os.path.exists(weights):
             print('\nloading model...')
-            network = torch.load(weights).cuda()
+            image_wise_network = torch.load(weights).cuda()
 
         self.args = args
         self.weights = weights
-        self.patch_model = PatchWiseModel(patch_network)
-        self.network = network.cuda() if args.cuda else network
+        self.patch_wise_model = PatchWiseModel(patch_wise_network)
+        self.network = image_wise_network.cuda() if args.cuda else image_wise_network
 
     def start_train(self):
         self.network.train()
         print('Evaluating patch-wise model...')
 
-        patch_outputs = self.patch_model.output_train()
+        patch_outputs = self.patch_wise_model.output_train()
         train_loader = DataLoader(
             dataset=TensorDataset(torch.from_numpy(patch_outputs[0]), torch.from_numpy(patch_outputs[1])),
             batch_size=self.args.batch_size,
@@ -254,7 +254,7 @@ class ImageWiseModel:
         self.network.eval()
 
         if self._test_loader is None:
-            patch_outputs = self.patch_model.output_test()
+            patch_outputs = self.patch_wise_model.output_test()
             self._test_loader = DataLoader(
                 dataset=TensorDataset(torch.from_numpy(patch_outputs[0]), torch.from_numpy(patch_outputs[1])),
                 batch_size=self.args.batch_size,
