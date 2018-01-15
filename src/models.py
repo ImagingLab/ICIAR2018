@@ -1,12 +1,11 @@
+import os
 import time
 import datetime
-import torch
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.autograd import Variable
 from torch.utils.data import DataLoader, TensorDataset
 
-from .options import *
 from .datasets import *
 
 TRAIN_PATH = '/train'
@@ -14,13 +13,8 @@ TEST_PATH = '/test'
 
 
 class PatchWiseModel:
-    def __init__(self, network):
-        args = ModelOptions().parse()
+    def __init__(self, args, network):
         weights = args.checkpoints_dir + '/weights_' + network.name() + '.pth'
-
-        torch.manual_seed(args.seed)
-        if args.cuda:
-            torch.cuda.manual_seed(args.seed)
 
         if os.path.exists(weights):
             print('\nloading model...')
@@ -41,16 +35,13 @@ class PatchWiseModel:
             num_workers=4
         )
         optimizer = optim.Adam(self.network.parameters(), lr=self.args.lr, betas=(self.args.beta1, self.args.beta2))
+        scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda epc: 2 ** (epc // 10))
 
         for epoch in range(1, self.args.epochs + 1):
 
             self.network.train()
+            scheduler.step()
             stime = datetime.datetime.now()
-
-            # adjust learning rate
-            lr = self.args.lr * (2 ** (epoch // 10))
-            for param_group in optimizer.param_groups:
-                param_group['lr'] = lr
 
             correct = 0
             total = 0
@@ -80,7 +71,7 @@ class PatchWiseModel:
                         100 * correct / total
                     ))
 
-            print('\nEnd of epoch {}, time: {}, saving model....'.format(epoch, datetime.datetime.now() - stime))
+            print('\nEnd of epoch {}, time: {}, saving model to "{}"'.format(epoch, datetime.datetime.now() - stime, self.weights))
             torch.save(self.network, self.weights)
 
             self.start_test()
@@ -105,7 +96,7 @@ class PatchWiseModel:
             shuffle=False,
             num_workers=4
         )
-        print('Evaluating....')
+        print('\nEvaluating....')
         for images, labels in test_loader:
 
             if self.args.cuda:
@@ -130,7 +121,7 @@ class PatchWiseModel:
             f1[label] = 2 * precision[label] * recall[label] / (precision[label] + recall[label] + 1e-8)
 
         test_loss /= len(test_loader.dataset)
-        print('\nAverage loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
+        print('Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
             test_loss,
             correct,
             len(test_loader.dataset),
@@ -165,27 +156,22 @@ class PatchWiseModel:
         output_images = []
         output_labels = []
 
-        index = 0
-        for images, labels in output_loader:
-            index += 1
-            print(index)
-            if self.args.cuda:
-                images, labels = images.cuda(), labels.cuda()
-                res = self.features(Variable(images, volatile=True))
-                output_images.append(res)
-                output_labels.append(labels)
+        for index, (images, labels) in enumerate(output_loader):
+            if index % 100 == 0:
+                print('{} images loaded'.format(index))
 
-        return np.array(output_images), np.array(output_labels)
+            if self.args.cuda:
+                images = images.cuda()
+                res = self.network.features(Variable(images[0], volatile=True))
+                output_labels.append(labels.numpy())
+                output_images.append(res.squeeze().data.cpu().numpy())
+
+        return torch.from_numpy(np.array(output_images)), torch.from_numpy(np.array(output_labels)).squeeze()
 
 
 class ImageWiseModel:
-    def __init__(self, image_wise_network, patch_wise_network):
-        args = ModelOptions().parse()
+    def __init__(self, args, image_wise_network, patch_wise_network):
         weights = args.checkpoints_dir + '/weights_' + image_wise_network.name() + '.pth'
-
-        torch.manual_seed(args.seed)
-        if args.cuda:
-            torch.cuda.manual_seed(args.seed)
 
         if os.path.exists(weights):
             print('\nloading model...')
@@ -193,7 +179,7 @@ class ImageWiseModel:
 
         self.args = args
         self.weights = weights
-        self.patch_wise_model = PatchWiseModel(patch_wise_network)
+        self.patch_wise_model = PatchWiseModel(args, patch_wise_network)
         self.network = image_wise_network.cuda() if args.cuda else image_wise_network
 
     def start_train(self):
@@ -202,7 +188,7 @@ class ImageWiseModel:
 
         patch_outputs = self.patch_wise_model.output_train()
         train_loader = DataLoader(
-            dataset=TensorDataset(torch.from_numpy(patch_outputs[0]), torch.from_numpy(patch_outputs[1])),
+            dataset=TensorDataset(patch_outputs[0], patch_outputs[1]),
             batch_size=self.args.batch_size,
             shuffle=True,
             num_workers=2
@@ -211,10 +197,12 @@ class ImageWiseModel:
         print('Start training: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
 
         optimizer = optim.Adam(self.network.parameters(), lr=self.args.lr, betas=(self.args.beta1, self.args.beta2))
+        scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda epc: 2 ** (epc // 10))
 
         for epoch in range(1, self.args.epochs + 1):
 
             self.network.train()
+            scheduler.step()
             stime = datetime.datetime.now()
 
             correct = 0
@@ -245,7 +233,7 @@ class ImageWiseModel:
                         100 * correct / total
                     ))
 
-            print('\nEnd of epoch {}, time: {}, saving model....'.format(epoch, datetime.datetime.now() - stime))
+            print('\nEnd of epoch {}, time: {}, saving model to "{}"'.format(epoch, datetime.datetime.now() - stime, self.weights))
             torch.save(self.network, self.weights)
 
             self.start_test()
@@ -273,7 +261,7 @@ class ImageWiseModel:
         recall = [0] * classes
         f1 = [0] * classes
 
-        print('Evaluating....')
+        print('\nEvaluating....')
         for images, labels in self._test_loader:
 
             if self.args.cuda:
@@ -298,7 +286,7 @@ class ImageWiseModel:
             f1[label] = 2 * precision[label] * recall[label] / (precision[label] + recall[label] + 1e-8)
 
         test_loss /= len(self._test_loader.dataset)
-        print('\nAverage loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
+        print('Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
             test_loss,
             correct,
             len(self._test_loader.dataset),

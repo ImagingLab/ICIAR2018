@@ -352,7 +352,7 @@ class ImageWiseNetwork4(nn.Module):
         )
 
         self.classifier = nn.Sequential(
-            nn.Linear(1 * 16 * 16, 4),
+            nn.Linear(1 * 4 * 4, 4),
         )
 
         self._initialize_weights()
@@ -410,7 +410,7 @@ class ImageWiseNetwork5(nn.Module):
         )
 
         self.classifier = nn.Sequential(
-            nn.Linear(1 * 16 * 16, 4),
+            nn.Linear(1 * 4 * 4, 4),
         )
 
         self._initialize_weights()
