@@ -37,7 +37,8 @@ class PatchWiseModel:
         optimizer = optim.Adam(self.network.parameters(), lr=self.args.lr, betas=(self.args.beta1, self.args.beta2))
         scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda epc: 2 ** (epc // 10))
         best = 0
-
+        mean = 0
+        
         for epoch in range(1, self.args.epochs + 1):
 
             self.network.train()
@@ -74,10 +75,13 @@ class PatchWiseModel:
 
             print('\nEnd of epoch {}, time: {}'.format(epoch, datetime.datetime.now() - stime))
             acc = self.start_test()
+            mean += acc
             if acc > best:
                 best = acc
                 print('Saving model to "{}"'.format(self.weights))
                 torch.save(self.network, self.weights)
+
+                print('\nEnd of training, best accuracy: {}, mean accuracy: {}\n'.format(best, mean // epoch))
 
     def start_test(self):
         self.network.eval()
@@ -205,6 +209,7 @@ class ImageWiseModel:
         optimizer = optim.Adam(self.network.parameters(), lr=self.args.lr, betas=(self.args.beta1, self.args.beta2))
         scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda epc: 2 ** (epc // 10))
         best = 0
+        mean = 0
 
         for epoch in range(1, self.args.epochs + 1):
 
@@ -241,10 +246,13 @@ class ImageWiseModel:
 
             print('\nEnd of epoch {}, time: {}'.format(epoch, datetime.datetime.now() - stime))
             acc = self.start_test()
+            mean += acc
             if acc > best:
                 best = acc
                 print('Saving model to "{}"'.format(self.weights))
                 torch.save(self.network, self.weights)
+
+        print('\nEnd of training, best accuracy: {}, mean accuracy: {}\n'.format(best, mean // epoch))
 
     def start_test(self):
         self.network.eval()
