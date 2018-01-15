@@ -26,7 +26,7 @@ class PatchWiseModel:
 
     def train(self):
         self.network.train()
-        print('Start training: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
+        print('Start training patch-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
 
         train_loader = DataLoader(
             dataset=PatchWiseDataset(path=self.args.dataset_path + TRAIN_PATH, stride=self.args.patch_stride, rotate=True, flip=True),
@@ -149,24 +149,10 @@ class PatchWiseModel:
         print('')
         return acc
 
-    def output(self, dataset):
+    def output(self, input_tensor):
         self.network.eval()
-
-        output_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False, num_workers=8)
-        output_images = []
-        output_labels = []
-
-        for index, (images, labels) in enumerate(output_loader):
-            if index > 0 and index % 100 == 0:
-                print('{} images loaded'.format(index))
-
-            if self.args.cuda:
-                images = images.cuda()
-                res = self.network.features(Variable(images[0], volatile=True))
-                output_labels.append(labels.numpy())
-                output_images.append(res.squeeze().data.cpu().numpy())
-
-        return torch.from_numpy(np.array(output_images)), torch.from_numpy(np.array(output_labels)).squeeze()
+        res = self.network.features(Variable(input_tensor, volatile=True))
+        return res.squeeze()
 
 
 class ImageWiseModel:
@@ -187,20 +173,9 @@ class ImageWiseModel:
         self.network.train()
         print('Evaluating patch-wise model...')
 
-        dataset = ImageWiseDataset(
-            path=self.args.dataset_path + TRAIN_PATH,
-            stride=self.args.patch_stride,
-            flip=True)
+        train_loader = self._patch_loader(self.args.dataset_path + TRAIN_PATH, True)
 
-        patch_outputs = self.patch_wise_model.output(dataset)
-        train_loader = DataLoader(
-            dataset=TensorDataset(patch_outputs[0], patch_outputs[1]),
-            batch_size=self.args.batch_size,
-            shuffle=True,
-            num_workers=2
-        )
-
-        print('Start training: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
+        print('Start training image-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
 
         optimizer = optim.Adam(self.network.parameters(), lr=self.args.lr, betas=(self.args.beta1, self.args.beta2))
         scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda epc: 2 ** (epc // 10))
@@ -256,17 +231,7 @@ class ImageWiseModel:
         self.network.eval()
 
         if self._test_loader is None:
-            dataset = ImageWiseDataset(
-                path=self.args.dataset_path + VALIDATION_PATH,
-                stride=self.args.patch_stride)
-
-            patch_outputs = self.patch_wise_model.output(dataset)
-            self._test_loader = DataLoader(
-                dataset=TensorDataset(patch_outputs[0], patch_outputs[1]),
-                batch_size=self.args.batch_size,
-                shuffle=True,
-                num_workers=2
-            )
+            self._test_loader = self._patch_loader(self.args.dataset_path + VALIDATION_PATH, False)
 
         test_loss = 0
         correct = 0
@@ -324,20 +289,54 @@ class ImageWiseModel:
         return acc
 
     def test(self, path):
-        patch_outputs = self.patch_wise_model.output(ImageWiseDataset(path=path, stride=self.args.patch_stride))
+        dataset = TestDataset(path=path, stride=self.args.patch_stride)
+        data_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False)
+        stime = datetime.datetime.now()
+        print('')
 
-        data_loader = DataLoader(
-            dataset=TensorDataset(patch_outputs[0], patch_outputs[1]),
-            batch_size=1,
-            shuffle=False,
-            num_workers=2
-        )
-
-        for image, label in data_loader:
+        for index, (image, file_name) in enumerate(data_loader):
 
             if self.args.cuda:
-                image, label = image.cuda(), label.cuda()
+                image = image[0].cuda()
 
-            output = self.network(Variable(image, volatile=True))
+            patches = self.patch_wise_model.output(image).unsqueeze(0)
+
+            if self.args.cuda:
+                patches = patches.cuda()
+
+            output = self.network(patches)
             _, predicted = torch.max(output.data, 1)
-            print(predicted)
+
+            print('{}) {} - {}'.format(index + 1, LABELS[predicted[0]], file_name[0]))
+
+        print('\nInference time: {}\n'.format(datetime.datetime.now() - stime))
+
+    def _patch_loader(self, path, augment):
+        dataset = ImageWiseDataset(
+            path=path,
+            stride=self.args.patch_stride,
+            flip=augment,
+            rotate=augment)
+
+        output_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False, num_workers=8)
+        output_images = []
+        output_labels = []
+
+        for index, (images, labels) in enumerate(output_loader):
+            if index > 0 and index % 100 == 0:
+                print('{} images loaded'.format(index))
+
+            if self.args.cuda:
+                images = images.cuda()
+                res = self.patch_wise_model.output(images[0])
+                output_labels.append(labels.numpy())
+                output_images.append(res.squeeze().data.cpu().numpy())
+
+        images, labels = torch.from_numpy(np.array(output_images)), torch.from_numpy(np.array(output_labels)).squeeze()
+
+        return DataLoader(
+            dataset=TensorDataset(images, labels),
+            batch_size=self.args.batch_size,
+            shuffle=True,
+            num_workers=2
+        )

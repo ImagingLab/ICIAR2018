@@ -48,16 +48,10 @@ class PatchWiseDataset(Dataset):
 
 
 class ImageWiseDataset(Dataset):
-    def __init__(self, path, stride=PATCH_SIZE, rotate=False, flip=False, load_labels=False):
+    def __init__(self, path, stride=PATCH_SIZE, rotate=False, flip=False):
         super().__init__()
 
-        if load_labels:
-            if os.path.isdir(path):
-                labels = {name: 0 for name in glob.glob(path + '/*.tif')}
-            else:
-                labels = {path: 0}
-        else:
-            labels = {name: index for index in range(len(LABELS)) for name in glob.glob(path + '/' + LABELS[index] + '/*.tif')}
+        labels = {name: index for index in range(len(LABELS)) for name in glob.glob(path + '/' + LABELS[index] + '/*.tif')}
 
         self.path = path
         self.stride = stride
@@ -84,7 +78,37 @@ class ImageWiseDataset(Dataset):
             b = torch.zeros((len(patches), 3, PATCH_SIZE, PATCH_SIZE))
             for i in range(len(patches)):
                 b[i] = transforms.ToTensor()(patches[i])
+
             return b, label
 
     def __len__(self):
         return np.prod(self.shape)
+
+
+class TestDataset(Dataset):
+    def __init__(self, path, stride=PATCH_SIZE):
+        super().__init__()
+
+        if os.path.isdir(path):
+            names = [name for name in glob.glob(path + '/*.tif')]
+        else:
+            names = [path]
+
+        self.path = path
+        self.stride = stride
+        self.names = list(sorted(names))
+
+    def __getitem__(self, index):
+        file = self.names[index]
+        with Image.open(file) as img:
+            extractor = PatchExtractor(img=img, patch_size=PATCH_SIZE, stride=self.stride)
+            patches = extractor.extract_patches()
+
+            b = torch.zeros((len(patches), 3, PATCH_SIZE, PATCH_SIZE))
+            for i in range(len(patches)):
+                b[i] = transforms.ToTensor()(patches[i])
+
+            return b, file
+
+    def __len__(self):
+        return len(self.names)

@@ -10,4 +10,10 @@ pw_network = PatchWiseNetwork1()
 iw_network = ImageWiseNetwork1()
 
 pw_model = ImageWiseModel(args, iw_network, pw_network)
-pw_model.test(args.test_path)
+
+if args.testset_path is '':
+    import tkinter.filedialog as fdialog
+
+    args.testset_path = fdialog.askopenfilename(initialdir=r"./dataset/test", title="choose your file", filetypes=(("tiff files", "*.tif"), ("all files", "*.*")))
+
+pw_model.test(args.testset_path)
