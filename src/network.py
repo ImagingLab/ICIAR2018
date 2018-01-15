@@ -406,11 +406,17 @@ class ImageWiseNetwork5(nn.Module):
             nn.ReLU(inplace=True),
             nn.Dropout(0.2, inplace=True),
 
-            nn.Conv2d(in_channels=64, out_channels=1, kernel_size=1, stride=1),
+            #nn.Conv2d(in_channels=64, out_channels=1, kernel_size=1, stride=1),
         )
 
         self.classifier = nn.Sequential(
-            nn.Linear(1 * 4 * 4, 4),
+            nn.Linear(64 * 4 * 4, 256),
+            nn.Dropout(0.5, inplace=True),
+            nn.ReLU(inplace=True),
+            nn.Linear(256, 128),
+            nn.Dropout(0.5, inplace=True),
+            nn.ReLU(inplace=True),
+            nn.Linear(128, 4),
         )
 
         self._initialize_weights()
