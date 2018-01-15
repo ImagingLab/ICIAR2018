@@ -16,7 +16,7 @@ TEST_PATH = '/test'
 class PatchWiseModel:
     def __init__(self, network):
         args = ModelOptions().parse()
-        weights = args.checkpoints_dir + '/weights_patch_' + network.name() + '.pth'
+        weights = args.checkpoints_dir + '/weights_' + network.name() + '.pth'
 
         torch.manual_seed(args.seed)
         if args.cuda:
@@ -181,7 +181,7 @@ class PatchWiseModel:
 class ImageWiseModel:
     def __init__(self, network, patch_network):
         args = ModelOptions().parse()
-        weights = args.checkpoints_dir + '/weights_whole_' + network.name() + '.pth'
+        weights = args.checkpoints_dir + '/weights_' + network.name() + '.pth'
 
         torch.manual_seed(args.seed)
         if args.cuda:
