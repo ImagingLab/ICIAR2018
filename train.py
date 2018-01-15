@@ -1,16 +1,16 @@
-from src import ModelOptions, BachModel, BachNetwork, BachNetwork2, AlexNet
+from src import *
 
-opt = ModelOptions().parse()
+args = ModelOptions().parse()
 
-if opt.network == 'AlexNet':
-    network = AlexNet()
+torch.manual_seed(args.seed)
+if args.cuda:
+    torch.cuda.manual_seed(args.seed)
 
-elif opt.network == 'BachNetwork2':
-    network = BachNetwork2()
+pw_network = PatchWiseNetwork1()
+iw_network = ImageWiseNetwork1()
 
-else:
-    network = BachNetwork()
+pw_model = PatchWiseModel(args, pw_network)
+pw_model.train()
 
-model = BachModel(network)
-model.train()
-#model.test()
+iw_model = ImageWiseModel(args, iw_network, pw_network)
+iw_model.train()

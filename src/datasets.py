@@ -1,3 +1,4 @@
+import os
 import glob
 import torch
 import numpy as np
@@ -47,10 +48,16 @@ class PatchWiseDataset(Dataset):
 
 
 class ImageWiseDataset(Dataset):
-    def __init__(self, path, stride=PATCH_SIZE, rotate=False, flip=False):
+    def __init__(self, path, stride=PATCH_SIZE, rotate=False, flip=False, load_labels=False):
         super().__init__()
 
-        labels = {name: index for index in range(len(LABELS)) for name in glob.glob(path + '/' + LABELS[index] + '/*.tif')}
+        if load_labels:
+            if os.path.isdir(path):
+                labels = {name: 0 for name in glob.glob(path + '/*.tif')}
+            else:
+                labels = {path: 0}
+        else:
+            labels = {name: index for index in range(len(LABELS)) for name in glob.glob(path + '/' + LABELS[index] + '/*.tif')}
 
         self.path = path
         self.stride = stride
@@ -81,4 +88,3 @@ class ImageWiseDataset(Dataset):
 
     def __len__(self):
         return np.prod(self.shape)
-

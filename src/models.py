@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from .datasets import *
 
 TRAIN_PATH = '/train'
-TEST_PATH = '/test'
+VALIDATION_PATH = '/validation'
 
 
 class PatchWiseModel:
@@ -24,7 +24,7 @@ class PatchWiseModel:
         self.weights = weights
         self.network = network.cuda() if args.cuda else network
 
-    def start_train(self):
+    def train(self):
         self.network.train()
         print('Start training: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
 
@@ -38,7 +38,8 @@ class PatchWiseModel:
         scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda epc: 2 ** (epc // 10))
         best = 0
         mean = 0
-        
+        epoch = 0
+
         for epoch in range(1, self.args.epochs + 1):
 
             self.network.train()
@@ -74,16 +75,17 @@ class PatchWiseModel:
                     ))
 
             print('\nEnd of epoch {}, time: {}'.format(epoch, datetime.datetime.now() - stime))
-            acc = self.start_test()
+            acc = self.validate()
             mean += acc
             if acc > best:
                 best = acc
                 print('Saving model to "{}"'.format(self.weights))
                 torch.save(self.network, self.weights)
 
-                print('\nEnd of training, best accuracy: {}, mean accuracy: {}\n'.format(best, mean // epoch))
+        self.network = torch.load(self.weights).cuda()
+        print('\nEnd of training, best accuracy: {}, mean accuracy: {}\n'.format(best, mean // epoch))
 
-    def start_test(self):
+    def validate(self):
         self.network.eval()
 
         test_loss = 0
@@ -98,7 +100,7 @@ class PatchWiseModel:
         f1 = [0] * classes
 
         test_loader = DataLoader(
-            dataset=PatchWiseDataset(path=self.args.dataset_path + TEST_PATH, stride=self.args.patch_stride),
+            dataset=PatchWiseDataset(path=self.args.dataset_path + VALIDATION_PATH, stride=self.args.patch_stride),
             batch_size=self.args.batch_size,
             shuffle=False,
             num_workers=4
@@ -147,19 +149,8 @@ class PatchWiseModel:
         print('')
         return acc
 
-    def output_train(self):
-        return self._output(True)
-
-    def output_test(self):
-        return self._output(False)
-
-    def _output(self, is_train):
+    def output(self, dataset):
         self.network.eval()
-
-        dataset = ImageWiseDataset(
-            path=self.args.dataset_path + (TRAIN_PATH if is_train else TEST_PATH),
-            stride=self.args.patch_stride,
-            flip=(True if is_train else False))
 
         output_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False, num_workers=8)
         output_images = []
@@ -192,11 +183,16 @@ class ImageWiseModel:
         self.network = image_wise_network.cuda() if args.cuda else image_wise_network
         self._test_loader = None
 
-    def start_train(self):
+    def train(self):
         self.network.train()
         print('Evaluating patch-wise model...')
 
-        patch_outputs = self.patch_wise_model.output_train()
+        dataset = ImageWiseDataset(
+            path=self.args.dataset_path + TRAIN_PATH,
+            stride=self.args.patch_stride,
+            flip=True)
+
+        patch_outputs = self.patch_wise_model.output(dataset)
         train_loader = DataLoader(
             dataset=TensorDataset(patch_outputs[0], patch_outputs[1]),
             batch_size=self.args.batch_size,
@@ -210,6 +206,7 @@ class ImageWiseModel:
         scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda epc: 2 ** (epc // 10))
         best = 0
         mean = 0
+        epoch = 0
 
         for epoch in range(1, self.args.epochs + 1):
 
@@ -245,20 +242,25 @@ class ImageWiseModel:
                 ))
 
             print('\nEnd of epoch {}, time: {}'.format(epoch, datetime.datetime.now() - stime))
-            acc = self.start_test()
+            acc = self.validate()
             mean += acc
             if acc > best:
                 best = acc
                 print('Saving model to "{}"'.format(self.weights))
                 torch.save(self.network, self.weights)
 
+        self.network = torch.load(self.weights).cuda()
         print('\nEnd of training, best accuracy: {}, mean accuracy: {}\n'.format(best, mean // epoch))
 
-    def start_test(self):
+    def validate(self):
         self.network.eval()
 
         if self._test_loader is None:
-            patch_outputs = self.patch_wise_model.output_test()
+            dataset = ImageWiseDataset(
+                path=self.args.dataset_path + VALIDATION_PATH,
+                stride=self.args.patch_stride)
+
+            patch_outputs = self.patch_wise_model.output(dataset)
             self._test_loader = DataLoader(
                 dataset=TensorDataset(patch_outputs[0], patch_outputs[1]),
                 batch_size=self.args.batch_size,
@@ -320,3 +322,22 @@ class ImageWiseModel:
 
         print('')
         return acc
+
+    def test(self, path):
+        patch_outputs = self.patch_wise_model.output(ImageWiseDataset(path=path, stride=self.args.patch_stride))
+
+        data_loader = DataLoader(
+            dataset=TensorDataset(patch_outputs[0], patch_outputs[1]),
+            batch_size=1,
+            shuffle=False,
+            num_workers=2
+        )
+
+        for image, label in data_loader:
+
+            if self.args.cuda:
+                image, label = image.cuda(), label.cuda()
+
+            output = self.network(Variable(image, volatile=True))
+            _, predicted = torch.max(output.data, 1)
+            print(predicted)
