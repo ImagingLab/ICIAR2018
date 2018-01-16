@@ -185,8 +185,9 @@ class ImageWiseModel:
         best = self.validate(verbose=False)
         mean = 0
         epoch = 0
+        epochs = self.args.epochs * 2
 
-        for epoch in range(1, self.args.epochs * 2 + 1):
+        for epoch in range(1, epochs + 1):
 
             self.network.train()
             stime = datetime.datetime.now()
@@ -211,7 +212,7 @@ class ImageWiseModel:
 
                 print('Epoch: {}/{} [{}/{} ({:.0f}%)]\tLoss: {:.6f}, Accuracy: {:.2f}%'.format(
                     epoch,
-                    self.args.epochs,
+                    epochs,
                     index * len(images),
                     len(train_loader.dataset),
                     100. * index / len(train_loader),
