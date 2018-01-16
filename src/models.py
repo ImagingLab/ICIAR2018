@@ -1,4 +1,3 @@
-import os
 import time
 import datetime
 import torch.optim as optim
@@ -43,7 +42,7 @@ class PatchWiseModel:
         for epoch in range(1, self.args.epochs + 1):
 
             self.network.train()
-            scheduler.step()
+            #scheduler.step()
             stime = datetime.datetime.now()
 
             correct = 0
@@ -187,7 +186,7 @@ class ImageWiseModel:
         mean = 0
         epoch = 0
 
-        for epoch in range(1, self.args.epochs + 1):
+        for epoch in range(1, self.args.epochs * 2 + 1):
 
             self.network.train()
             stime = datetime.datetime.now()
@@ -298,7 +297,7 @@ class ImageWiseModel:
         return acc
 
     def test(self, path):
-        dataset = TestDataset(path=path, stride=self.args.patch_stride)
+        dataset = TestDataset(path=path, stride=PATCH_SIZE)
         data_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False)
         stime = datetime.datetime.now()
         print('')
@@ -322,27 +321,38 @@ class ImageWiseModel:
         print('\nInference time: {}\n'.format(datetime.datetime.now() - stime))
 
     def _patch_loader(self, path, augment):
-        dataset = ImageWiseDataset(
-            path=path,
-            stride=self.args.patch_stride,
-            flip=augment)
+        if augment and os.path.exists('np_images.npy'):
+            np_images = np.load('np_images.npy')
+            np_labels = np.load('np_labels.npy')
 
-        output_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False, num_workers=0)
-        output_images = []
-        output_labels = []
+        else:
+            dataset = ImageWiseDataset(
+                path=path,
+                stride=PATCH_SIZE,
+                flip=augment)
 
-        for index, (images, labels) in enumerate(output_loader):
-            if index > 0 and index % 100 == 0:
-                print('{} images loaded'.format(index / 4))
+            output_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False, num_workers=0)
+            output_images = []
+            output_labels = []
 
-            if self.args.cuda:
-                images = images.cuda()
+            for index, (images, labels) in enumerate(output_loader):
+                if index > 0 and index % 100 == 0:
+                    print('{} images loaded'.format(int(index / 4)))
 
-            res = self.patch_wise_model.output(images[0])
-            output_labels.append(labels.numpy())
-            output_images.append(res.squeeze().data.cpu().numpy())
+                if self.args.cuda:
+                    images = images.cuda()
 
-        images, labels = torch.from_numpy(np.array(output_images)), torch.from_numpy(np.array(output_labels)).squeeze()
+                res = self.patch_wise_model.output(images[0])
+                output_labels.append(labels.numpy())
+                output_images.append(res.squeeze().data.cpu().numpy())
+
+            np_images = np.array(output_images)
+            np_labels = np.array(output_labels)
+            if augment:
+                np.save('np_images', np_images)
+                np.save('np_labels', np_labels)
+
+        images, labels = torch.from_numpy(np_images), torch.from_numpy(np_labels).squeeze()
 
         return DataLoader(
             dataset=TensorDataset(images, labels),
