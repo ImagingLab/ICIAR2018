@@ -21,6 +21,7 @@ class ModelOptions:
         parser.add_argument('--log-interval', type=int, default=50, metavar='N', help='how many batches to wait before logging training status')
         parser.add_argument('--checkpoints-dir', type=str, default='./checkpoints', help='models are saved here')
         parser.add_argument('--gpu-ids', type=str, default='0', help='gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU')
+        parser.add_argument('--network', type=str, default='0', help='train patch-wise network: 1, image-wise network: 2 or both: 0 (default: 0)')
 
         self._parser = parser
 

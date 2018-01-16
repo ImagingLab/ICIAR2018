@@ -9,8 +9,10 @@ if args.cuda:
 pw_network = PatchWiseNetwork1()
 iw_network = ImageWiseNetwork1()
 
-pw_model = PatchWiseModel(args, pw_network)
-#pw_model.train()
+if args.network == '0' or args.network == '1':
+    pw_model = PatchWiseModel(args, pw_network)
+    pw_model.train()
 
-iw_model = ImageWiseModel(args, iw_network, pw_network)
-iw_model.train()
+if args.network == '0' or args.network == '2':
+    iw_model = ImageWiseModel(args, iw_network, pw_network)
+    iw_model.train()
