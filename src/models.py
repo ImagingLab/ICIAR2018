@@ -35,8 +35,8 @@ class PatchWiseModel:
             num_workers=4
         )
         optimizer = optim.Adam(self.network.parameters(), lr=self.args.lr, betas=(self.args.beta1, self.args.beta2))
-        scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda epc: 2 ** (epc // 10))
-        best = 0
+        scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda epc: 10 ** (epc // 10))
+        best = self.validate(verbose=False)
         mean = 0
         epoch = 0
 
@@ -65,8 +65,9 @@ class PatchWiseModel:
                 total += len(images)
 
                 if index > 0 and index % self.args.log_interval == 0:
-                    print('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}, Accuracy: {:.2f}%'.format(
+                    print('Epoch: {}/{} [{}/{} ({:.0f}%)]\tLoss: {:.6f}, Accuracy: {:.2f}%'.format(
                         epoch,
+                        self.args.epochs,
                         index * len(images),
                         len(train_loader.dataset),
                         100. * index / len(train_loader),
@@ -85,7 +86,7 @@ class PatchWiseModel:
         self.network = torch.load(self.weights).cuda()
         print('\nEnd of training, best accuracy: {}, mean accuracy: {}\n'.format(best, mean // epoch))
 
-    def validate(self):
+    def validate(self, verbose=True):
         self.network.eval()
 
         test_loss = 0
@@ -105,7 +106,9 @@ class PatchWiseModel:
             shuffle=False,
             num_workers=4
         )
-        print('\nEvaluating....')
+        if verbose:
+            print('\nEvaluating....')
+
         for images, labels in test_loader:
 
             if self.args.cuda:
@@ -131,22 +134,24 @@ class PatchWiseModel:
 
         test_loss /= len(test_loader.dataset)
         acc = 100. * correct / len(test_loader.dataset)
-        print('Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
-            test_loss,
-            correct,
-            len(test_loader.dataset),
-            100. * correct / len(test_loader.dataset)
-        ))
 
-        for label in range(classes):
-            print('{}:  \t Precision: {:.2f},  Recall: {:.2f},  F1: {:.2f}'.format(
-                LABELS[label],
-                precision[label],
-                recall[label],
-                f1[label]
+        if verbose:
+            print('Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
+                test_loss,
+                correct,
+                len(test_loader.dataset),
+                100. * correct / len(test_loader.dataset)
             ))
 
-        print('')
+            for label in range(classes):
+                print('{}:  \t Precision: {:.2f},  Recall: {:.2f},  F1: {:.2f}'.format(
+                    LABELS[label],
+                    precision[label],
+                    recall[label],
+                    f1[label]
+                ))
+
+            print('')
         return acc
 
     def output(self, input_tensor):
@@ -178,15 +183,13 @@ class ImageWiseModel:
         print('Start training image-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
 
         optimizer = optim.Adam(self.network.parameters(), lr=self.args.lr, betas=(self.args.beta1, self.args.beta2))
-        scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda epc: 2 ** (epc // 10))
-        best = 0
+        best = self.validate(verbose=False)
         mean = 0
         epoch = 0
 
         for epoch in range(1, self.args.epochs + 1):
 
             self.network.train()
-            scheduler.step()
             stime = datetime.datetime.now()
 
             correct = 0
@@ -207,8 +210,9 @@ class ImageWiseModel:
                 correct += torch.sum(predicted == labels)
                 total += len(images)
 
-                print('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}, Accuracy: {:.2f}%'.format(
+                print('Epoch: {}/{} [{}/{} ({:.0f}%)]\tLoss: {:.6f}, Accuracy: {:.2f}%'.format(
                     epoch,
+                    self.args.epochs,
                     index * len(images),
                     len(train_loader.dataset),
                     100. * index / len(train_loader),
@@ -227,7 +231,7 @@ class ImageWiseModel:
         self.network = torch.load(self.weights).cuda()
         print('\nEnd of training, best accuracy: {}, mean accuracy: {}\n'.format(best, mean // epoch))
 
-    def validate(self):
+    def validate(self, verbose=True):
         self.network.eval()
 
         if self._test_loader is None:
@@ -244,7 +248,9 @@ class ImageWiseModel:
         recall = [0] * classes
         f1 = [0] * classes
 
-        print('\nEvaluating....')
+        if verbose:
+            print('\nEvaluating....')
+
         for images, labels in self._test_loader:
 
             if self.args.cuda:
@@ -270,22 +276,25 @@ class ImageWiseModel:
 
         test_loss /= len(self._test_loader.dataset)
         acc = 100. * correct / len(self._test_loader.dataset)
-        print('Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
-            test_loss,
-            correct,
-            len(self._test_loader.dataset),
-            acc
-        ))
 
-        for label in range(classes):
-            print('{}:  \t Precision: {:.2f},  Recall: {:.2f},  F1: {:.2f}'.format(
-                LABELS[label],
-                precision[label],
-                recall[label],
-                f1[label]
+        if verbose:
+            print('Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
+                test_loss,
+                correct,
+                len(self._test_loader.dataset),
+                acc
             ))
 
-        print('')
+            for label in range(classes):
+                print('{}:  \t Precision: {:.2f},  Recall: {:.2f},  F1: {:.2f}'.format(
+                    LABELS[label],
+                    precision[label],
+                    recall[label],
+                    f1[label]
+                ))
+
+            print('')
+
         return acc
 
     def test(self, path):
@@ -306,8 +315,9 @@ class ImageWiseModel:
 
             output = self.network(patches)
             _, predicted = torch.max(output.data, 1)
+            confidence = np.round(torch.max(torch.exp(output.data)) * 100, 2)
 
-            print('{}) {} - {}'.format(index + 1, LABELS[predicted[0]], file_name[0]))
+            print('{}) {} ({}%) - {}'.format(index + 1, LABELS[predicted[0]], confidence, file_name[0]))
 
         print('\nInference time: {}\n'.format(datetime.datetime.now() - stime))
 
@@ -315,22 +325,22 @@ class ImageWiseModel:
         dataset = ImageWiseDataset(
             path=path,
             stride=self.args.patch_stride,
-            flip=augment,
-            rotate=augment)
+            flip=augment)
 
-        output_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False, num_workers=8)
+        output_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False, num_workers=0)
         output_images = []
         output_labels = []
 
         for index, (images, labels) in enumerate(output_loader):
             if index > 0 and index % 100 == 0:
-                print('{} images loaded'.format(index))
+                print('{} images loaded'.format(index / 4))
 
             if self.args.cuda:
                 images = images.cuda()
-                res = self.patch_wise_model.output(images[0])
-                output_labels.append(labels.numpy())
-                output_images.append(res.squeeze().data.cpu().numpy())
+
+            res = self.patch_wise_model.output(images[0])
+            output_labels.append(labels.numpy())
+            output_images.append(res.squeeze().data.cpu().numpy())
 
         images, labels = torch.from_numpy(np.array(output_images)), torch.from_numpy(np.array(output_labels)).squeeze()
 

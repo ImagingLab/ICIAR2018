@@ -58,7 +58,7 @@ class PatchWiseNetwork1(nn.Module):
         self._initialize_weights()
 
     def name(self):
-        return 'pw4'
+        return 'pw1'
 
     def forward(self, x):
         x = self.features(x)
@@ -146,7 +146,7 @@ class PatchWiseNetwork2(nn.Module):
         self._initialize_weights()
 
     def name(self):
-        return 'pw5'
+        return 'pw2'
 
     def forward(self, x):
         x = self.features(x)
@@ -200,7 +200,7 @@ class ImageWiseNetwork1(nn.Module):
         self._initialize_weights()
 
     def name(self):
-        return 'iw4'
+        return 'iw1'
 
     def forward(self, x):
         x = self.features(x)
@@ -264,7 +264,7 @@ class ImageWiseNetwork2(nn.Module):
         self._initialize_weights()
 
     def name(self):
-        return 'iw5'
+        return 'iw2'
 
     def forward(self, x):
         x = self.features(x)
