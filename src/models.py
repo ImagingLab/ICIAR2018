@@ -34,7 +34,7 @@ class PatchWiseModel:
             num_workers=4
         )
         optimizer = optim.Adam(self.network.parameters(), lr=self.args.lr, betas=(self.args.beta1, self.args.beta2))
-        scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda epc: 10 ** (epc // 10))
+        scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda epc: 10 ** (epc // 20))
         best = self.validate(verbose=False)
         mean = 0
         epoch = 0
@@ -42,7 +42,7 @@ class PatchWiseModel:
         for epoch in range(1, self.args.epochs + 1):
 
             self.network.train()
-            #scheduler.step()
+            scheduler.step()
             stime = datetime.datetime.now()
 
             correct = 0
