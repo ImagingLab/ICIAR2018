@@ -80,7 +80,7 @@ class PatchWiseModel:
             if acc > best:
                 best = acc
                 print('Saving model to "{}"'.format(self.weights))
-                torch.save(self.network, self.weights)
+            torch.save(self.network, self.weights)
 
         self.network = torch.load(self.weights).cuda()
         print('\nEnd of training, best accuracy: {}, mean accuracy: {}\n'.format(best, mean // epoch))
@@ -226,7 +226,7 @@ class ImageWiseModel:
             if acc > best:
                 best = acc
                 print('Saving model to "{}"'.format(self.weights))
-                torch.save(self.network, self.weights)
+            torch.save(self.network, self.weights)
 
         self.network = torch.load(self.weights).cuda()
         print('\nEnd of training, best accuracy: {}, mean accuracy: {}\n'.format(best, mean // epoch))
