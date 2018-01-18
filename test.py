@@ -6,8 +6,8 @@ torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
-pw_network = PatchWiseNetwork()
-iw_network = ImageWiseNetwork()
+pw_network = PatchWiseNetwork(args.channels)
+iw_network = ImageWiseNetwork(args.channels)
 
 pw_model = ImageWiseModel(args, iw_network, pw_network)
 

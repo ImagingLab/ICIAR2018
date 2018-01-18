@@ -22,6 +22,7 @@ class ModelOptions:
         parser.add_argument('--checkpoints-dir', type=str, default='./checkpoints', help='models are saved here')
         parser.add_argument('--gpu-ids', type=str, default='0', help='gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU')
         parser.add_argument('--network', type=str, default='0', help='train patch-wise network: 1, image-wise network: 2 or both: 0 (default: 0)')
+        parser.add_argument('--channels', type=int, default=64, help='number of channels created by the patch-wise network that feeds into the image-wise network (default: 64)')
 
         self._parser = parser
 
