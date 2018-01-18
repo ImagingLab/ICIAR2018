@@ -1,9 +1,12 @@
 import time
 import datetime
+import matplotlib.pyplot as plt
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.autograd import Variable
 from torch.utils.data import DataLoader, TensorDataset
+from sklearn.metrics import roc_curve, auc
+from sklearn.preprocessing import label_binarize
 
 from .datasets import *
 
@@ -230,7 +233,7 @@ class ImageWiseModel:
         self.network = torch.load(self.weights).cuda()
         print('\nEnd of training, best accuracy: {}, mean accuracy: {}\n'.format(best, mean // epoch))
 
-    def validate(self, verbose=True):
+    def validate(self, verbose=True, roc=False):
         self.network.eval()
 
         if self._test_loader is None:
@@ -250,6 +253,9 @@ class ImageWiseModel:
         if verbose:
             print('\nEvaluating....')
 
+        labels_true = []
+        labels_pred = np.empty((0, 4))
+
         for images, labels in self._test_loader:
 
             if self.args.cuda:
@@ -260,6 +266,9 @@ class ImageWiseModel:
             test_loss += F.nll_loss(output, Variable(labels), size_average=False).data[0]
             _, predicted = torch.max(output.data, 1)
             correct += torch.sum(predicted == labels)
+
+            labels_true = np.append(labels_true, labels)
+            labels_pred = np.append(labels_pred, torch.exp(output.data).cpu().numpy(), axis=0)
 
             for label in range(classes):
                 t_labels = labels == label
@@ -275,6 +284,21 @@ class ImageWiseModel:
 
         test_loss /= len(self._test_loader.dataset)
         acc = 100. * correct / len(self._test_loader.dataset)
+
+        if roc == 1:
+            labels_true = label_binarize(labels_true, classes=range(classes))
+            for lbl in range(classes):
+                fpr, tpr, _ = roc_curve(labels_true[:, lbl], labels_pred[:, lbl])
+                roc_auc = auc(fpr, tpr)
+                plt.plot(fpr, tpr, lw=2, label='{} (area: {:.2f})'.format(LABELS[lbl], roc_auc))
+
+            plt.xlim([0, 1])
+            plt.ylim([0, 1.05])
+            plt.xlabel('False Positive Rate')
+            plt.ylabel('True Positive Rate')
+            plt.legend(loc="lower right")
+            plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+            plt.show()
 
         if verbose:
             print('Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
