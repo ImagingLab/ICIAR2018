@@ -21,6 +21,7 @@ cd ICIAR2018
 ```
 
 ### Testing
+- The pre-trained ICIAR2018 dataset model resides under `./checkpoints`.
 - To test the model, run `test.py` script
 - Use `--testset-path` comand-line argument to provide the path to the `test` folder.
 ```bash
