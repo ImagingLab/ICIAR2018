@@ -104,32 +104,32 @@ class ImageWiseNetwork(nn.Module):
         self._name = 'iw' + str(input_size)
         self.features = nn.Sequential(
             # Block 1
-            nn.Conv2d(in_channels=input_size, out_channels=64, kernel_size=3, stride=1, padding=1),
-            # nn.BatchNorm2d(64),
+            nn.Conv2d(in_channels=12 * input_size, out_channels=64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
-            # nn.Dropout(0.2, inplace=True),
+            nn.Dropout(0.2, inplace=True),
             nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1),
-            # nn.BatchNorm2d(64),
+            nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
-            # nn.Dropout(0.2, inplace=True),
+            nn.Dropout(0.2, inplace=True),
             nn.Conv2d(in_channels=64, out_channels=64, kernel_size=2, stride=2),
-            # nn.BatchNorm2d(64),
+            nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
-            # nn.Dropout(0.2, inplace=True),
+            nn.Dropout(0.2, inplace=True),
 
             # Block 2
             nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=1),
-            # nn.BatchNorm2d(128),
+            nn.BatchNorm2d(128),
             nn.ReLU(inplace=True),
-            # nn.Dropout(0.2, inplace=True),
+            nn.Dropout(0.2, inplace=True),
             nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, stride=1, padding=1),
-            # nn.BatchNorm2d(128),
+            nn.BatchNorm2d(128),
             nn.ReLU(inplace=True),
-            # nn.Dropout(0.2, inplace=True),
+            nn.Dropout(0.2, inplace=True),
             nn.Conv2d(in_channels=128, out_channels=128, kernel_size=2, stride=2),
-            # nn.BatchNorm2d(128),
+            nn.BatchNorm2d(128),
             nn.ReLU(inplace=True),
-            # nn.Dropout(0.2, inplace=True),
+            nn.Dropout(0.2, inplace=True),
 
             nn.Conv2d(in_channels=128, out_channels=1, kernel_size=1, stride=1),
         )
@@ -137,11 +137,11 @@ class ImageWiseNetwork(nn.Module):
         self.classifier = nn.Sequential(
             nn.Linear(1 * 16 * 16, 128),
             nn.ReLU(inplace=True),
-            nn.Dropout(0.5, inplace=True),
+            nn.Dropout(0.7, inplace=True),
 
             nn.Linear(128, 64),
             nn.ReLU(inplace=True),
-            nn.Dropout(0.5, inplace=True),
+            nn.Dropout(0.7, inplace=True),
             nn.Linear(64, 4),
         )
 

@@ -213,15 +213,16 @@ class ImageWiseModel:
                 correct += torch.sum(predicted == labels)
                 total += len(images)
 
-                print('Epoch: {}/{} [{}/{} ({:.0f}%)]\tLoss: {:.6f}, Accuracy: {:.2f}%'.format(
-                    epoch,
-                    self.args.epochs,
-                    index * len(images),
-                    len(train_loader.dataset),
-                    100. * index / len(train_loader),
-                    loss.data[0],
-                    100 * correct / total
-                ))
+                if index > 0 and index % 10 == 0:
+                    print('Epoch: {}/{} [{}/{} ({:.0f}%)]\tLoss: {:.6f}, Accuracy: {:.2f}%'.format(
+                        epoch,
+                        self.args.epochs,
+                        index * len(images),
+                        len(train_loader.dataset),
+                        100. * index / len(train_loader),
+                        loss.data[0],
+                        100 * correct / total
+                    ))
 
             print('\nEnd of epoch {}, time: {}'.format(epoch, datetime.datetime.now() - stime))
             acc = self.validate()
@@ -300,6 +301,7 @@ class ImageWiseModel:
             plt.ylabel('True Positive Rate')
             plt.legend(loc="lower right")
             plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+            plt.title('Receiver Operating Characteristic')
             plt.show()
 
         if verbose:
@@ -356,7 +358,7 @@ class ImageWiseModel:
                 path=path,
                 stride=PATCH_SIZE,
                 flip=augment,
-                enhance=augment)
+                enhance=False)
 
             output_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False, num_workers=0)
             output_images = []
