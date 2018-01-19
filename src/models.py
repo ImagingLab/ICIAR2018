@@ -31,7 +31,7 @@ class PatchWiseModel:
         print('Start training patch-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
 
         train_loader = DataLoader(
-            dataset=PatchWiseDataset(path=self.args.dataset_path + TRAIN_PATH, stride=self.args.patch_stride, rotate=True, flip=True),
+            dataset=PatchWiseDataset(path=self.args.dataset_path + TRAIN_PATH, stride=self.args.patch_stride, rotate=True, flip=True, enhance=True),
             batch_size=self.args.batch_size,
             shuffle=True,
             num_workers=4
@@ -355,7 +355,8 @@ class ImageWiseModel:
             dataset = ImageWiseDataset(
                 path=path,
                 stride=PATCH_SIZE,
-                flip=augment)
+                flip=augment,
+                enhance=augment)
 
             output_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False, num_workers=0)
             output_images = []
