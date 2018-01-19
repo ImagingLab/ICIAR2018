@@ -3,7 +3,7 @@ BACH - ICIAR 2018 Grand Challenge on BreAst Cancer Histology images
 
 
 ## Prerequisites
-- Linux or macOS
+- Linux
 - Python 3
 - NVIDIA GPU (12G or 24G memory) + CUDA cuDNN
 
