@@ -24,7 +24,7 @@ class PatchWiseDataset(Dataset):
         self.stride = stride
         self.labels = labels
         self.names = list(sorted(labels.keys()))
-        self.shape = (len(labels), wp, hp, (4 if rotate else 1), (2 if flip else 1), (4 if enhance else 1))  # (files, x_patches, y_patches, rotations, flip, enhance)
+        self.shape = (len(labels), wp, hp, (4 if rotate else 1), (2 if flip else 1), (2 if enhance else 1))  # (files, x_patches, y_patches, rotations, flip, enhance)
 
     def __getitem__(self, index):
         im, xpatch, ypatch, rotation, flip, enhance = np.unravel_index(index, self.shape)
@@ -62,7 +62,7 @@ class ImageWiseDataset(Dataset):
         self.stride = stride
         self.labels = labels
         self.names = list(sorted(labels.keys()))
-        self.shape = (len(labels), (2 if flip else 1), (2 if flip else 1), (4 if enhance else 1))  # (files, x_patches, y_patches, h_flip, v_flip, enhance)
+        self.shape = (len(labels), (2 if flip else 1), (2 if flip else 1), (2 if enhance else 1))  # (files, x_patches, y_patches, h_flip, v_flip, enhance)
 
     def __getitem__(self, index):
         im, h_flip, v_flip, enhance = np.unravel_index(index, self.shape)
