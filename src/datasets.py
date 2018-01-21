@@ -25,6 +25,7 @@ class PatchWiseDataset(Dataset):
         self.labels = labels
         self.names = list(sorted(labels.keys()))
         self.shape = (len(labels), wp, hp, (4 if rotate else 1), (2 if flip else 1), (2 if enhance else 1))  # (files, x_patches, y_patches, rotations, flip, enhance)
+        self.augment_size = np.prod(self.shape) / len(labels)
 
     def __getitem__(self, index):
         im, xpatch, ypatch, rotation, flip, enhance = np.unravel_index(index, self.shape)
@@ -53,7 +54,7 @@ class PatchWiseDataset(Dataset):
 
 
 class ImageWiseDataset(Dataset):
-    def __init__(self, path, stride=PATCH_SIZE, flip=False, enhance=False):
+    def __init__(self, path, stride=PATCH_SIZE, rotate=False, flip=False, enhance=False):
         super().__init__()
 
         labels = {name: index for index in range(len(LABELS)) for name in glob.glob(path + '/' + LABELS[index] + '/*.tif')}
@@ -62,18 +63,19 @@ class ImageWiseDataset(Dataset):
         self.stride = stride
         self.labels = labels
         self.names = list(sorted(labels.keys()))
-        self.shape = (len(labels), (2 if flip else 1), (2 if flip else 1), (2 if enhance else 1))  # (files, x_patches, y_patches, h_flip, v_flip, enhance)
+        self.shape = (len(labels), (4 if rotate else 1), (2 if flip else 1), (2 if enhance else 1))  # (files, x_patches, y_patches, rotations, flip, enhance)
+        self.augment_size = np.prod(self.shape) / len(labels)
 
     def __getitem__(self, index):
-        im, h_flip, v_flip, enhance = np.unravel_index(index, self.shape)
+        im, rotation, flip, enhance = np.unravel_index(index, self.shape)
 
         with Image.open(self.names[im]) as img:
 
-            if h_flip != 0:
+            if flip != 0:
                 img = img.transpose(Image.FLIP_LEFT_RIGHT)
 
-            if v_flip != 0:
-                img = img.transpose(Image.FLIP_TOP_BOTTOM)
+            if rotation != 0:
+                img = img.rotate(rotation * 90)
 
             if enhance != 0:
                 factors = np.random.uniform(.5, 1.5, 3)

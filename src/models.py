@@ -358,6 +358,7 @@ class ImageWiseModel:
                 path=path,
                 stride=PATCH_SIZE,
                 flip=augment,
+                rotate=augment,
                 enhance=augment)
 
             output_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False, num_workers=0)
@@ -366,14 +367,18 @@ class ImageWiseModel:
 
             for index, (images, labels) in enumerate(output_loader):
                 if index > 0 and index % 100 == 0:
-                    print('{} images loaded'.format(int(index / 4)))
+                    print('{} images loaded'.format(int(index / dataset.augment_size)))
 
                 if self.args.cuda:
                     images = images.cuda()
 
                 res = self.patch_wise_model.output(images[0])
                 output_labels.append(labels.numpy())
-                output_images.append(res.squeeze().data.cpu().numpy())
+
+                if len(res.shape) == 4:
+                    res = res.view(-1, res.shape[2], res.shape[3])
+
+                output_images.append(res.data.cpu().numpy())
 
             np_images = np.array(output_images)
             np_labels = np.array(output_labels)
