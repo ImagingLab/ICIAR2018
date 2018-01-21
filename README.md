@@ -1,6 +1,8 @@
 # ICIAR2018
 This repository is the part A of the ICIAR 2018 Grand Challenge on BreAst Cancer Histology (BACH) images for automatically classifying H&E stained breast histology microscopy images in four classes: normal, benign, in situ carcinoma and invasive carcinoma.
-
+<p align='center'>  
+  <img src='img/network.png' />
+</p>
 
 ## Prerequisites
 - Linux
