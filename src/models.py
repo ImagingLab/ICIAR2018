@@ -358,7 +358,7 @@ class ImageWiseModel:
                 path=path,
                 stride=PATCH_SIZE,
                 flip=augment,
-                enhance=False)
+                enhance=augment)
 
             output_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False, num_workers=0)
             output_images = []
