@@ -3,6 +3,7 @@ import datetime
 import matplotlib.pyplot as plt
 import torch.optim as optim
 import torch.nn.functional as F
+import matplotlib.pyplot as ply
 from torch.autograd import Variable
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.metrics import roc_curve, auc
@@ -175,6 +176,40 @@ class PatchWiseModel(BaseModel):
         self.network.eval()
         res = self.network.features(Variable(input_tensor, volatile=True))
         return res.squeeze()
+
+    def visualize(self, path, channel=0):
+        dataset = TestDataset(path=path, stride=PATCH_SIZE)
+        data_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False)
+
+        for index, (image, file_name) in enumerate(data_loader):
+
+            if self.args.cuda:
+                image = image[0].cuda()
+
+            patches = self.output(image)
+
+            output = patches.cpu().data.numpy()
+
+            map = np.zeros((3 * 64, 4 * 64))
+
+            for i in range(12):
+                row = i // 4
+                col = i % 4
+                map[row * 64:(row + 1) * 64, col * 64:(col + 1) * 64] = output[i]
+
+            if len(map.shape) > 2:
+                map = map[channel]
+
+            with Image.open(file_name[0]) as img:
+                ply.subplot(121)
+                ply.axis('off')
+                ply.imshow(np.array(img))
+
+                ply.subplot(122)
+                ply.imshow(map, cmap='gray')
+                ply.axis('off')
+
+                ply.show()
 
 
 class ImageWiseModel(BaseModel):
