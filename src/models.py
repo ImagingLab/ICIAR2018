@@ -14,17 +14,33 @@ TRAIN_PATH = '/train'
 VALIDATION_PATH = '/validation'
 
 
-class PatchWiseModel:
-    def __init__(self, args, network):
-        weights = args.checkpoints_dir + '/weights_' + network.name() + '.pth'
-
-        if os.path.exists(weights):
-            print('Loading "patch-wise" model...')
-            network = torch.load(weights).cuda()
-
+class BaseModel:
+    def __init__(self, args, network, weights_path):
         self.args = args
-        self.weights = weights
+        self.weights = weights_path
         self.network = network.cuda() if args.cuda else network
+        self.load()
+
+    def load(self):
+        try:
+            if os.path.exists(self.weights):
+                print('Loading "patch-wise" model...')
+                self.network = torch.load(self.weights)
+                if self.args.cuda:
+                    self.network = self.network.cuda()
+                    # self.network.load_state_dict(torch.load(self.weights))
+        except:
+            print('Failed to load pre-trained network')
+
+    def save(self):
+        print('Saving model to "{}"'.format(self.weights))
+        torch.save(self.network, self.weights)
+        # torch.save(self.network.cpu().state_dict(), self.weights)
+
+
+class PatchWiseModel(BaseModel):
+    def __init__(self, args, network):
+        super(PatchWiseModel, self).__init__(args, network, args.checkpoints_dir + '/weights_' + network.name() + '.pth')
 
     def train(self):
         self.network.train()
@@ -83,10 +99,8 @@ class PatchWiseModel:
             if acc > best:
                 best = acc
 
-            print('Saving model to "{}"'.format(self.weights))
-            torch.save(self.network, self.weights)
+            self.save()
 
-        self.network = torch.load(self.weights).cuda()
         print('\nEnd of training, best accuracy: {}, mean accuracy: {}\n'.format(best, mean // epoch))
 
     def validate(self, verbose=True):
@@ -163,18 +177,11 @@ class PatchWiseModel:
         return res.squeeze()
 
 
-class ImageWiseModel:
+class ImageWiseModel(BaseModel):
     def __init__(self, args, image_wise_network, patch_wise_network):
-        weights = args.checkpoints_dir + '/weights_' + image_wise_network.name() + '.pth'
+        super(ImageWiseModel, self).__init__(args, image_wise_network, args.checkpoints_dir + '/weights_' + image_wise_network.name() + '.pth')
 
-        if os.path.exists(weights):
-            print('\nLoading "image-wise" model...')
-            image_wise_network = torch.load(weights).cuda()
-
-        self.args = args
-        self.weights = weights
         self.patch_wise_model = PatchWiseModel(args, patch_wise_network)
-        self.network = image_wise_network.cuda() if args.cuda else image_wise_network
         self._test_loader = None
 
     def train(self):
@@ -230,10 +237,8 @@ class ImageWiseModel:
             if acc > best:
                 best = acc
 
-            print('Saving model to "{}"'.format(self.weights))
-            torch.save(self.network, self.weights)
+            self.save()
 
-        self.network = torch.load(self.weights).cuda()
         print('\nEnd of training, best accuracy: {}, mean accuracy: {}\n'.format(best, mean // epoch))
 
     def validate(self, verbose=True, roc=False):
