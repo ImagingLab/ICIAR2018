@@ -37,7 +37,7 @@ class BaseModel:
 
 class PatchWiseModel(BaseModel):
     def __init__(self, args, network):
-        super(PatchWiseModel, self).__init__(args, network, args.checkpoints_dir + '/weights_' + network.name() + '.pth')
+        super(PatchWiseModel, self).__init__(args, network, args.checkpoints_path + '/weights_' + network.name() + '.pth')
 
     def train(self):
         self.network.train()
@@ -250,7 +250,7 @@ class PatchWiseModel(BaseModel):
 
 class ImageWiseModel(BaseModel):
     def __init__(self, args, image_wise_network, patch_wise_network):
-        super(ImageWiseModel, self).__init__(args, image_wise_network, args.checkpoints_dir + '/weights_' + image_wise_network.name() + '.pth')
+        super(ImageWiseModel, self).__init__(args, image_wise_network, args.checkpoints_path + '/weights_' + image_wise_network.name() + '.pth')
 
         self.patch_wise_model = PatchWiseModel(args, patch_wise_network)
         self._test_loader = None
@@ -448,7 +448,7 @@ class ImageWiseModel(BaseModel):
                 rotate=augment,
                 enhance=augment)
 
-            output_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False, num_workers=0)
+            output_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False, num_workers=1)
             output_images = []
             output_labels = []
 
