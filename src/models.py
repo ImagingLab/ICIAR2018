@@ -26,17 +26,13 @@ class BaseModel:
         try:
             if os.path.exists(self.weights):
                 print('Loading "patch-wise" model...')
-                self.network = torch.load(self.weights)
-                if self.args.cuda:
-                    self.network = self.network.cuda()
-                    # self.network.load_state_dict(torch.load(self.weights))
+                self.network.load_state_dict(torch.load(self.weights))
         except:
             print('Failed to load pre-trained network')
 
     def save(self):
         print('Saving model to "{}"'.format(self.weights))
-        torch.save(self.network, self.weights)
-        # torch.save(self.network.cpu().state_dict(), self.weights)
+        torch.save(self.network.cpu().state_dict(), self.weights)
 
 
 class PatchWiseModel(BaseModel):
