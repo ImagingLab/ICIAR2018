@@ -32,7 +32,7 @@ class BaseModel:
 
     def save(self):
         print('Saving model to "{}"'.format(self.weights))
-        torch.save(self.network.cpu().state_dict(), self.weights)
+        torch.save(self.network.state_dict(), self.weights)
 
 
 class PatchWiseModel(BaseModel):

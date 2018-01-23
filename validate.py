@@ -15,4 +15,4 @@ if args.network == '0' or args.network == '1':
 
 if args.network == '0' or args.network == '2':
     iw_model = ImageWiseModel(args, iw_network, pw_network)
-    iw_model.validate()
+    iw_model.validate(roc=True)

@@ -3,11 +3,33 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class PatchWiseNetwork(nn.Module):
-    def __init__(self, output_size=1):
-        super(PatchWiseNetwork, self).__init__()
+class BaseNetwork(nn.Module):
+    def __init__(self, name, channels=1):
+        super(BaseNetwork, self).__init__()
+        self._name = name
+        self._channels = channels
 
-        self._name = 'pw' + str(output_size)
+    def name(self):
+        return self._name
+
+    def initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.xavier_uniform(m.weight, gain=np.sqrt(2))
+                if m.bias is not None:
+                    m.bias.data.zero_()
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+            elif isinstance(m, nn.Linear):
+                m.weight.data.normal_(0, 0.01)
+                m.bias.data.zero_()
+
+
+class PatchWiseNetwork(BaseNetwork):
+    def __init__(self, channels=1):
+        super(PatchWiseNetwork, self).__init__('pw' + str(channels), channels)
+
         self.features = nn.Sequential(
             # Block 1
             nn.Conv2d(in_channels=3, out_channels=16, kernel_size=3, stride=1, padding=1),
@@ -64,17 +86,14 @@ class PatchWiseNetwork(nn.Module):
             nn.BatchNorm2d(256),
             nn.ReLU(inplace=True),
 
-            nn.Conv2d(in_channels=256, out_channels=output_size, kernel_size=1, stride=1),
+            nn.Conv2d(in_channels=256, out_channels=channels, kernel_size=1, stride=1),
         )
 
         self.classifier = nn.Sequential(
-            nn.Linear(output_size * 64 * 64, 4),
+            nn.Linear(channels * 64 * 64, 4),
         )
 
-        self._initialize_weights()
-
-    def name(self):
-        return self._name
+        self.initialize_weights()
 
     def forward(self, x):
         x = self.features(x)
@@ -83,28 +102,14 @@ class PatchWiseNetwork(nn.Module):
         x = F.log_softmax(x, dim=1)
         return x
 
-    def _initialize_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.xavier_uniform(m.weight, gain=np.sqrt(2))
-                if m.bias is not None:
-                    m.bias.data.zero_()
-            elif isinstance(m, nn.BatchNorm2d):
-                m.weight.data.fill_(1)
-                m.bias.data.zero_()
-            elif isinstance(m, nn.Linear):
-                m.weight.data.normal_(0, 0.01)
-                m.bias.data.zero_()
 
+class ImageWiseNetwork(BaseNetwork):
+    def __init__(self, channels=1):
+        super(ImageWiseNetwork, self).__init__('iw' + str(channels), channels)
 
-class ImageWiseNetwork(nn.Module):
-    def __init__(self, input_size=1):
-        super(ImageWiseNetwork, self).__init__()
-
-        self._name = 'iw' + str(input_size)
         self.features = nn.Sequential(
             # Block 1
-            nn.Conv2d(in_channels=12 * input_size, out_channels=64, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(in_channels=12 * channels, out_channels=64, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1),
@@ -144,10 +149,7 @@ class ImageWiseNetwork(nn.Module):
             nn.Linear(64, 4),
         )
 
-        self._initialize_weights()
-
-    def name(self):
-        return self._name
+        self.initialize_weights()
 
     def forward(self, x):
         x = self.features(x)
@@ -155,16 +157,3 @@ class ImageWiseNetwork(nn.Module):
         x = self.classifier(x)
         x = F.log_softmax(x, dim=1)
         return x
-
-    def _initialize_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.xavier_uniform(m.weight, gain=np.sqrt(2))
-                if m.bias is not None:
-                    m.bias.data.zero_()
-            elif isinstance(m, nn.BatchNorm2d):
-                m.weight.data.fill_(1)
-                m.bias.data.zero_()
-            elif isinstance(m, nn.Linear):
-                m.weight.data.normal_(0, 0.01)
-                m.bias.data.zero_()
