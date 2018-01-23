@@ -168,6 +168,44 @@ class PatchWiseModel(BaseModel):
             print('')
         return acc
 
+    def test(self, path, verbose=True):
+        dataset = TestDataset(path=path, stride=PATCH_SIZE)
+        data_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False)
+        stime = datetime.datetime.now()
+
+        if verbose:
+            print('')
+
+        res = []
+
+        for index, (image, file_name) in enumerate(data_loader):
+
+            if self.args.cuda:
+                image = image[0].cuda()
+
+            output = self.network(Variable(image))
+            _, predicted = torch.max(output.data, 1)
+
+            sum_prob = 3 - np.argmax(np.sum(np.exp(output.data.cpu().numpy()), axis=0)[::-1])
+            max_prob = 3 - np.argmax(np.max(np.exp(output.data.cpu().numpy()), axis=0)[::-1])
+            maj_prob = 3 - np.argmax(np.max(np.eye(4)[np.array(predicted).reshape(-1)], axis=0)[::-1])
+
+            res.append([sum_prob, max_prob, maj_prob, file_name[0]])
+
+            if verbose:
+                np.sum(output.data.cpu().numpy(), axis=0)
+                print('{}) sum: {} \t max: {} \t maj: {} \t {}'.format(
+                    str(index + 1).rjust(2, '0'),
+                    LABELS[sum_prob].ljust(8),
+                    LABELS[max_prob].ljust(8),
+                    LABELS[maj_prob].ljust(8),
+                    file_name[0]))
+
+        if verbose:
+            print('\nInference time: {}\n'.format(datetime.datetime.now() - stime))
+
+        return res
+
     def output(self, input_tensor):
         self.network.eval()
         res = self.network.features(Variable(input_tensor, volatile=True))
@@ -360,11 +398,15 @@ class ImageWiseModel(BaseModel):
 
         return acc
 
-    def test(self, path):
+    def test(self, path, verbose=True):
         dataset = TestDataset(path=path, stride=PATCH_SIZE)
         data_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False)
         stime = datetime.datetime.now()
-        print('')
+
+        if verbose:
+            print('')
+
+        res = []
 
         for index, (image, file_name) in enumerate(data_loader):
 
@@ -380,9 +422,15 @@ class ImageWiseModel(BaseModel):
             _, predicted = torch.max(output.data, 1)
             confidence = np.round(torch.max(torch.exp(output.data)) * 100, 2)
 
-            print('{}) {} ({}%) - {}'.format(index + 1, LABELS[predicted[0]], confidence, file_name[0]))
+            res.append([predicted[0], confidence, file_name[0]])
 
-        print('\nInference time: {}\n'.format(datetime.datetime.now() - stime))
+            if verbose:
+                print('{}) {} ({}%) - {}'.format(index + 1, LABELS[predicted[0]], confidence, file_name[0]))
+
+        if verbose:
+            print('\nInference time: {}\n'.format(datetime.datetime.now() - stime))
+
+        return res
 
     def _patch_loader(self, path, augment):
         if augment and os.path.exists('np_images.npy'):

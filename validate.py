@@ -9,5 +9,10 @@ if args.cuda:
 pw_network = PatchWiseNetwork(args.channels)
 iw_network = ImageWiseNetwork(args.channels)
 
-iw_model = ImageWiseModel(args, iw_network, pw_network)
-iw_model.validate(roc=True)
+if args.network == '0' or args.network == '1':
+    pw_model = PatchWiseModel(args, pw_network)
+    pw_model.validate()
+
+if args.network == '0' or args.network == '2':
+    iw_model = ImageWiseModel(args, iw_network, pw_network)
+    iw_model.validate()

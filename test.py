@@ -9,11 +9,15 @@ if args.cuda:
 pw_network = PatchWiseNetwork(args.channels)
 iw_network = ImageWiseNetwork(args.channels)
 
-pw_model = ImageWiseModel(args, iw_network, pw_network)
-
 if args.testset_path is '':
     import tkinter.filedialog as fdialog
 
     args.testset_path = fdialog.askopenfilename(initialdir=r"./dataset/test", title="choose your file", filetypes=(("tiff files", "*.tif"), ("all files", "*.*")))
 
-pw_model.test(args.testset_path)
+if args.network == '1':
+    pw_model = PatchWiseModel(args, pw_network)
+    pw_model.test(args.testset_path)
+
+else:
+    im_model = ImageWiseModel(args, iw_network, pw_network)
+    im_model.test(args.testset_path)
