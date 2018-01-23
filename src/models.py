@@ -436,9 +436,12 @@ class ImageWiseModel(BaseModel):
         return res
 
     def _patch_loader(self, path, augment):
-        if augment and os.path.exists('np_images.npy'):
-            np_images = np.load('np_images.npy')
-            np_labels = np.load('np_labels.npy')
+        images_path = '{}/{}_images.npy'.format(self.args.checkpoints_path, self.network.name())
+        labels_path = '{}/{}_labels.npy'.format(self.args.checkpoints_path, self.network.name())
+
+        if augment and os.path.exists(images_path):
+            np_images = np.load(images_path)
+            np_labels = np.load(labels_path)
 
         else:
             dataset = ImageWiseDataset(
@@ -448,7 +451,7 @@ class ImageWiseModel(BaseModel):
                 rotate=augment,
                 enhance=augment)
 
-            output_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False, num_workers=1)
+            output_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=True, num_workers=0)
             output_images = []
             output_labels = []
 
@@ -470,14 +473,14 @@ class ImageWiseModel(BaseModel):
             np_images = np.array(output_images)
             np_labels = np.array(output_labels)
             if augment:
-                np.save('np_images', np_images)
-                np.save('np_labels', np_labels)
+                np.save(images_path, np_images)
+                np.save(labels_path, np_labels)
 
         images, labels = torch.from_numpy(np_images), torch.from_numpy(np_labels).squeeze()
 
         return DataLoader(
             dataset=TensorDataset(images, labels),
             batch_size=self.args.batch_size,
-            shuffle=False,
+            shuffle=True,
             num_workers=2
         )
