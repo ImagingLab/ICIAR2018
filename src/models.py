@@ -169,6 +169,7 @@ class PatchWiseModel(BaseModel):
         return acc
 
     def test(self, path, verbose=True):
+        self.network.eval()
         dataset = TestDataset(path=path, stride=PATCH_SIZE)
         data_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False)
         stime = datetime.datetime.now()
@@ -212,6 +213,7 @@ class PatchWiseModel(BaseModel):
         return res.squeeze()
 
     def visualize(self, path, channel=0):
+        self.network.eval()
         dataset = TestDataset(path=path, stride=PATCH_SIZE)
         data_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False)
 
@@ -316,7 +318,7 @@ class ImageWiseModel(BaseModel):
         if self._test_loader is None:
             self._test_loader = self._patch_loader(self.args.dataset_path + VALIDATION_PATH, False)
 
-        test_loss = 0
+        val_loss = 0
         correct = 0
         classes = len(LABELS)
 
@@ -340,7 +342,7 @@ class ImageWiseModel(BaseModel):
 
             output = self.network(Variable(images, volatile=True))
 
-            test_loss += F.nll_loss(output, Variable(labels), size_average=False).data[0]
+            val_loss += F.nll_loss(output, Variable(labels), size_average=False).data[0]
             _, predicted = torch.max(output.data, 1)
             correct += torch.sum(predicted == labels)
 
@@ -359,7 +361,7 @@ class ImageWiseModel(BaseModel):
             recall[label] += (tp[label] / (tpfn[label] + 1e-8))
             f1[label] = 2 * precision[label] * recall[label] / (precision[label] + recall[label] + 1e-8)
 
-        test_loss /= len(self._test_loader.dataset)
+        val_loss /= len(self._test_loader.dataset)
         acc = 100. * correct / len(self._test_loader.dataset)
 
         if roc == 1:
@@ -380,7 +382,7 @@ class ImageWiseModel(BaseModel):
 
         if verbose:
             print('Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
-                test_loss,
+                val_loss,
                 correct,
                 len(self._test_loader.dataset),
                 acc
@@ -399,6 +401,7 @@ class ImageWiseModel(BaseModel):
         return acc
 
     def test(self, path, verbose=True):
+        self.network.eval()
         dataset = TestDataset(path=path, stride=PATCH_SIZE)
         data_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False)
         stime = datetime.datetime.now()
@@ -475,6 +478,6 @@ class ImageWiseModel(BaseModel):
         return DataLoader(
             dataset=TensorDataset(images, labels),
             batch_size=self.args.batch_size,
-            shuffle=True,
+            shuffle=False,
             num_workers=2
         )
