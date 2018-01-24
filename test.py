@@ -20,4 +20,4 @@ if args.network == '1':
 
 else:
     im_model = ImageWiseModel(args, iw_network, pw_network)
-    im_model.test(args.testset_path)
+    im_model.test(args.testset_path, ensemble=args.ensemble == 1)

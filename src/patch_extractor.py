@@ -14,8 +14,7 @@ class PatchExtractor:
         extracts all patches from an image
         :returns: A list of :py:class:`~PIL.Image.Image` objects.
         """
-        wp = int((self.img.width - self.size) / self.stride + 1)
-        hp = int((self.img.height - self.size) / self.stride + 1)
+        wp, hp = self.shape()
         return [self.extract_patch((w, h)) for h in range(hp) for w in range(wp)]
 
     def extract_patch(self, patch):
@@ -31,5 +30,10 @@ class PatchExtractor:
             patch[0] * self.stride + self.size,  # right
             patch[1] * self.stride + self.size  # down
         ))
+
+    def shape(self):
+        wp = int((self.img.width - self.size) / self.stride + 1)
+        hp = int((self.img.height - self.size) / self.stride + 1)
+        return wp, hp
 
 

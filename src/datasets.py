@@ -99,7 +99,7 @@ class ImageWiseDataset(Dataset):
 
 
 class TestDataset(Dataset):
-    def __init__(self, path, stride=PATCH_SIZE):
+    def __init__(self, path, stride=PATCH_SIZE, augment=False):
         super().__init__()
 
         if os.path.isdir(path):
@@ -109,17 +109,30 @@ class TestDataset(Dataset):
 
         self.path = path
         self.stride = stride
+        self.augment = augment
         self.names = list(sorted(names))
 
     def __getitem__(self, index):
         file = self.names[index]
         with Image.open(file) as img:
-            extractor = PatchExtractor(img=img, patch_size=PATCH_SIZE, stride=self.stride)
-            patches = extractor.extract_patches()
 
-            b = torch.zeros((len(patches), 3, PATCH_SIZE, PATCH_SIZE))
-            for i in range(len(patches)):
-                b[i] = transforms.ToTensor()(patches[i])
+            bins = 8 if self.augment else 1
+            extractor = PatchExtractor(img=img, patch_size=PATCH_SIZE, stride=self.stride)
+            b = torch.zeros((bins, extractor.shape()[0] * extractor.shape()[1], 3, PATCH_SIZE, PATCH_SIZE))
+
+            for k in range(bins):
+
+                if k % 4 != 0:
+                    img = img.rotate((k % 4) * 90)
+
+                if k // 4 != 0:
+                    img = img.transpose(Image.FLIP_LEFT_RIGHT)
+
+                extractor = PatchExtractor(img=img, patch_size=PATCH_SIZE, stride=self.stride)
+                patches = extractor.extract_patches()
+
+                for i in range(len(patches)):
+                    b[k, i] = transforms.ToTensor()(patches[i])
 
             return b, file
 

@@ -1,4 +1,5 @@
 import time
+import ntpath
 import datetime
 import matplotlib.pyplot as plt
 import torch.optim as optim
@@ -170,19 +171,19 @@ class PatchWiseModel(BaseModel):
 
     def test(self, path, verbose=True):
         self.network.eval()
-        dataset = TestDataset(path=path, stride=PATCH_SIZE)
+        dataset = TestDataset(path=path, stride=PATCH_SIZE, augment=False)
         data_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False)
         stime = datetime.datetime.now()
 
         if verbose:
-            print('')
+            print('\t sum\t\t max\t\t maj')
 
         res = []
 
         for index, (image, file_name) in enumerate(data_loader):
-
+            image = image.squeeze()
             if self.args.cuda:
-                image = image[0].cuda()
+                image = image.cuda()
 
             output = self.network(Variable(image))
             _, predicted = torch.max(output.data, 1)
@@ -195,12 +196,12 @@ class PatchWiseModel(BaseModel):
 
             if verbose:
                 np.sum(output.data.cpu().numpy(), axis=0)
-                print('{}) sum: {} \t max: {} \t maj: {} \t {}'.format(
+                print('{}) \t {} \t {} \t {} \t {}'.format(
                     str(index + 1).rjust(2, '0'),
                     LABELS[sum_prob].ljust(8),
                     LABELS[max_prob].ljust(8),
                     LABELS[maj_prob].ljust(8),
-                    file_name[0]))
+                    ntpath.basename(file_name[0])))
 
         if verbose:
             print('\nInference time: {}\n'.format(datetime.datetime.now() - stime))
@@ -400,9 +401,9 @@ class ImageWiseModel(BaseModel):
 
         return acc
 
-    def test(self, path, verbose=True):
+    def test(self, path, verbose=True, ensemble=True):
         self.network.eval()
-        dataset = TestDataset(path=path, stride=PATCH_SIZE)
+        dataset = TestDataset(path=path, stride=PATCH_SIZE, augment=ensemble)
         data_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False)
         stime = datetime.datetime.now()
 
@@ -412,23 +413,33 @@ class ImageWiseModel(BaseModel):
         res = []
 
         for index, (image, file_name) in enumerate(data_loader):
+            n_bins, n_patches = image.shape[1], image.shape[2]
+            image = image.view(-1, 3, PATCH_SIZE, PATCH_SIZE)
 
             if self.args.cuda:
-                image = image[0].cuda()
+                image = image.cuda()
 
-            patches = self.patch_wise_model.output(image).unsqueeze(0)
+            patches = self.patch_wise_model.output(image)
+            patches = patches.view(n_bins, -1, 64, 64)
 
             if self.args.cuda:
                 patches = patches.cuda()
 
             output = self.network(patches)
             _, predicted = torch.max(output.data, 1)
-            confidence = np.round(torch.max(torch.exp(output.data)) * 100, 2)
+            maj_prob = 3 - np.argmax(np.sum(np.eye(4)[np.array(predicted).reshape(-1)], axis=0)[::-1])
 
-            res.append([predicted[0], confidence, file_name[0]])
+            confidence = np.sum(np.array(predicted) == maj_prob) / n_bins if ensemble else torch.max(torch.exp(output.data))
+            confidence = np.round(confidence * 100, 2)
+
+            res.append([maj_prob, confidence, file_name[0]])
 
             if verbose:
-                print('{}) {} ({}%) - {}'.format(index + 1, LABELS[predicted[0]], confidence, file_name[0]))
+                print('{}) {} ({}%) \t {}'.format(
+                    str(index + 1).rjust(2, '0'),
+                    LABELS[maj_prob],
+                    confidence,
+                    ntpath.basename(file_name[0])))
 
         if verbose:
             print('\nInference time: {}\n'.format(datetime.datetime.now() - stime))
