@@ -188,9 +188,17 @@ class PatchWiseModel(BaseModel):
             output = self.network(Variable(image))
             _, predicted = torch.max(output.data, 1)
 
+            #
+            # the following measures are prioritised based on [invasive, insitu, benign, normal]
+            # the original labels are [normal, benign, insitu, invasive], so we reverse the order using [::-1]
+            # output data shape is 12x4
+            # sum_prop: sum of probabilities among y axis: (1, 4), reverse, and take the index  of the largest value
+            # max_prop: max of probabilities among y axis: (1, 4), reverse, and take the index  of the largest value
+            # maj_prop: majority voting: create a one-hot vector of predicted values: (12, 4), sum among y axis: (1, 4), reverse, and take the index  of the largest value
+
             sum_prob = 3 - np.argmax(np.sum(np.exp(output.data.cpu().numpy()), axis=0)[::-1])
             max_prob = 3 - np.argmax(np.max(np.exp(output.data.cpu().numpy()), axis=0)[::-1])
-            maj_prob = 3 - np.argmax(np.max(np.eye(4)[np.array(predicted).reshape(-1)], axis=0)[::-1])
+            maj_prob = 3 - np.argmax(np.sum(np.eye(4)[np.array(predicted).reshape(-1)], axis=0)[::-1])
 
             res.append([sum_prob, max_prob, maj_prob, file_name[0]])
 
@@ -427,6 +435,10 @@ class ImageWiseModel(BaseModel):
 
             output = self.network(patches)
             _, predicted = torch.max(output.data, 1)
+
+            # maj_prop: majority voting: create a one-hot vector of predicted values: (12, 4),
+            # sum among y axis: (1, 4), reverse, and take the index  of the largest value
+
             maj_prob = 3 - np.argmax(np.sum(np.eye(4)[np.array(predicted).reshape(-1)], axis=0)[::-1])
 
             confidence = np.sum(np.array(predicted) == maj_prob) / n_bins if ensemble else torch.max(torch.exp(output.data))
