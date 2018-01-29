@@ -378,7 +378,7 @@ class ImageWiseModel(BaseModel):
             for lbl in range(classes):
                 fpr, tpr, _ = roc_curve(labels_true[:, lbl], labels_pred[:, lbl])
                 roc_auc = auc(fpr, tpr)
-                plt.plot(fpr, tpr, lw=2, label='{} (area: {:.2f})'.format(LABELS[lbl], roc_auc))
+                plt.plot(fpr, tpr, lw=2, label='{} (AUC: {:.1f})'.format(LABELS[lbl], roc_auc * 100))
 
             plt.xlim([0, 1])
             plt.ylim([0, 1.05])
@@ -462,7 +462,7 @@ class ImageWiseModel(BaseModel):
         images_path = '{}/{}_images.npy'.format(self.args.checkpoints_path, self.network.name())
         labels_path = '{}/{}_labels.npy'.format(self.args.checkpoints_path, self.network.name())
 
-        if augment and os.path.exists(images_path):
+        if self.args.debug and augment and os.path.exists(images_path):
             np_images = np.load(images_path)
             np_labels = np.load(labels_path)
 
@@ -495,7 +495,8 @@ class ImageWiseModel(BaseModel):
 
             np_images = np.array(output_images)
             np_labels = np.array(output_labels)
-            if augment:
+
+            if self.args.debug and augment:
                 np.save(images_path, np_images)
                 np.save(labels_path, np_labels)
 

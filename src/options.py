@@ -24,6 +24,7 @@ class ModelOptions:
         parser.add_argument('--ensemble', type=int, default='1', help='whether to use model ensemble on test-set prediction (default: 1)')
         parser.add_argument('--network', type=str, default='0', help='train patch-wise network: 1, image-wise network: 2 or both: 0 (default: 0)')
         parser.add_argument('--channels', type=int, default=1, help='number of channels created by the patch-wise network that feeds into the image-wise network (default: 1)')
+        parser.add_argument('--debug', type=int, default=0, help='debugging (default: 0)')
 
         self._parser = parser
 
@@ -31,6 +32,7 @@ class ModelOptions:
         opt = self._parser.parse_args()
         os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpu_ids
         opt.cuda = not opt.no_cuda and torch.cuda.is_available()
+        opt.debug = opt.debug != 0
 
         args = vars(opt)
         print('\n------------ Options -------------')
