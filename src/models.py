@@ -1,4 +1,5 @@
 import time
+import time
 import ntpath
 import datetime
 import matplotlib.pyplot as plt
@@ -316,8 +317,7 @@ class ImageWiseModel(BaseModel):
             mean += acc
             if acc > best:
                 best = acc
-
-            self.save()
+                self.save()
 
         print('\nEnd of training, best accuracy: {}, mean accuracy: {}\n'.format(best, mean // epoch))
 
@@ -448,7 +448,7 @@ class ImageWiseModel(BaseModel):
 
             if verbose:
                 print('{}) {} ({}%) \t {}'.format(
-                    str(index + 1).rjust(2, '0'),
+                    str(index).rjust(2, '0'),
                     LABELS[maj_prob],
                     confidence,
                     ntpath.basename(file_name[0])))
@@ -485,6 +485,8 @@ class ImageWiseModel(BaseModel):
 
                 if self.args.cuda:
                     images = images.cuda()
+
+                bsize = images.shape[0]
 
                 res = self.patch_wise_model.output(images.view((-1, 3, 512, 512)))
                 res = res.view((bsize, -1, 64, 64)).data.cpu().numpy()
