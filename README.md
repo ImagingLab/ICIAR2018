@@ -1,7 +1,7 @@
 # ICIAR2018
-This repository is the part A of the ICIAR 2018 Grand Challenge on BreAst Cancer Histology (BACH) images for automatically classifying H&E stained breast histology microscopy images in four classes: normal, benign, in situ carcinoma and invasive carcinoma. The paper associated with this implementation is available at https://arxiv.org/abs/1803.04054 .
+This repository is the part A of the ICIAR 2018 Grand Challenge on BreAst Cancer Histology (BACH) images for automatically classifying H&E stained breast histology microscopy images in four classes: normal, benign, in situ carcinoma and invasive carcinoma. 
 
-We are presenting a CNN approach using two convolutional networks to classify histology images in a patchwise fashion. The first network, receives overlapping patches (35 patches) of the whole-slide image and learns to generate spatially smaller outputs. The second network is trained on the downsampled patches of the whole image using the output of the first network. The number of channels in the input to the second network is equal to the total number of patches extracted from the whole slide in a non-overlapping fashion (12 patches) times the depth of the feature maps generted by the first network (C): 
+We are presenting a CNN approach using two convolutional networks to classify histology images in a patchwise fashion. The first network, receives overlapping patches (35 patches) of the whole-slide image and learns to generate spatially smaller outputs. The second network is trained on the downsampled patches of the whole image using the output of the first network. The number of channels in the input to the second network is equal to the total number of patches extracted from the microscopy image in a non-overlapping fashion (12 patches) times the depth of the feature maps generted by the first network (C): 
 <p align='center'>  
   <img src='img/network.png' />
 </p>
@@ -25,7 +25,10 @@ cd ICIAR2018
 ```
 
 ### Dataset
-- We use the ICIAR2018 dataset. To train a model on the full dataset, please download it from the [official website](https://iciar2018-challenge.grand-challenge.org/dataset/) (registration required).
+- We use the ICIAR2018 dataset. To train a model on the full dataset, please download it from the [official website](https://iciar2018-challenge.grand-challenge.org/dataset/) (registration required). The dataset is composed of 400 high resolution Hematoxylin and Eosin (H&E) stained breast histology microscopy images labelled as normal, benign, in situ carcinoma, and invasive carcinoma (100 images for each category):
+<p align='center'>  
+  <img src='img/dataset.png' width='600' height='134' />
+</p>
 After downloading, please put it under the `datasets` folder in the same way the sub-directories are provided.
 
 
