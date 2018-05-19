@@ -27,7 +27,7 @@ cd ICIAR2018
 ### Dataset
 - We use the ICIAR2018 dataset. To train a model on the full dataset, please download it from the [official website](https://iciar2018-challenge.grand-challenge.org/dataset/) (registration required). The dataset is composed of 400 high resolution Hematoxylin and Eosin (H&E) stained breast histology microscopy images labelled as normal, benign, in situ carcinoma, and invasive carcinoma (100 images for each category):
 <p align='center'>  
-  <img src='img/dataset.png' width='600' height='134' />
+  <img src='img/dataset.jpg' width='600' height='134' />
 </p>
 After downloading, please put it under the `datasets` folder in the same way the sub-directories are provided.
 
