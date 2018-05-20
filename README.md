@@ -13,15 +13,15 @@ We are presenting a CNN approach using two convolutional networks to classify hi
 
 ## Getting Started
 ### Installation
-- Install PyTorch and dependencies from http://pytorch.org
-- Install python requirements:
-```bash
-pip install -r requirements.txt
-```
 - Clone this repo:
 ```bash
 git clone https://github.com/ImagingLab/ICIAR2018
 cd ICIAR2018
+```
+- Install PyTorch and dependencies from http://pytorch.org
+- Install python requirements:
+```bash
+pip install -r requirements.txt
 ```
 
 ### Dataset
