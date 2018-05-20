@@ -14,9 +14,9 @@ We are presenting a CNN approach using two convolutional networks to classify hi
 ## Getting Started
 ### Installation
 - Install PyTorch and dependencies from http://pytorch.org
-- Install python scikit-learn libraries [scikit-learn](https://github.com/scikit-learn/scikit-learn).
+- Install python requirements:
 ```bash
-pip install -U scikit-learn
+pip install -r requirements.txt
 ```
 - Clone this repo:
 ```bash
