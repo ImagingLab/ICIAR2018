@@ -15,12 +15,14 @@ class BaseNetwork(nn.Module):
     def initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.xavier_uniform(m.weight, gain=np.sqrt(2))
+                nn.init.kaiming_normal_(m.weight, nonlinearity='relu')
                 if m.bias is not None:
                     m.bias.data.zero_()
+
             elif isinstance(m, nn.BatchNorm2d):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
+
             elif isinstance(m, nn.Linear):
                 m.weight.data.normal_(0, 0.01)
                 m.bias.data.zero_()
