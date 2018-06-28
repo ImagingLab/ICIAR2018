@@ -69,10 +69,12 @@ python train.py --channels 1
 If you use this code for your research, please cite our paper <a href="https://arxiv.org/abs/1803.04054">Two-Stage Convolutional Neural Network for Breast Cancer Histology Image Classification</a>:
 
 ```
-@article{nazeri2018two,
+@inproceedings{nazeri2018two,
   title={Two-Stage Convolutional Neural Network for Breast Cancer Histology Image Classification},
   author={Nazeri, Kamyar and Aminpour, Azad and Ebrahimi, Mehran},
-  journal={arXiv preprint arXiv:1803.04054},
-  year={2018}
+  booktitle={International Conference Image Analysis and Recognition},
+  pages={717--726},
+  year={2018},
+  organization={Springer}
 }
 ```
